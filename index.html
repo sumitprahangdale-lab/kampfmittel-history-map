@@ -1804,7 +1804,7 @@ function renderSources(){
       ${s.note?`<span class="hint">${esc(s.note)}</span>`:""}
       ${pct!=null&&p.next>(s.pageFrom||1)?`<div class="bar" title="${pct}% read"><i style="width:${p.done?100:pct}%"></i></div><span class="hint">${p.done?"All selected pages read":`Read up to page ${p.next-1} of ${s.pageFrom||1}–${s.pageTo}`}</span>`:""}
       <div class="row">${url?`<a class="btn" href="${esc(url)}" target="_blank" rel="noopener">Open PDF ↗</a>`:s.externalUrl?`<a class="btn" href="${esc(s.externalUrl)}" target="_blank" rel="noopener">Original ↗</a>`:""}
-      ${s.pagesAssetId&&canOpen(s.pagesAssetId)&&s.kind!=="reference"?`<button class="btn" data-rule="${esc(id)}" title="Find dates and place names in the text without AI">${s.ruleEvents!=null?`Re-map dates & places (${s.ruleEvents})`:"Map dates & places"}</button>`:""}
+      ${s.pagesAssetId&&canOpen(s.pagesAssetId)&&s.kind==="chronology"?`<button class="btn" data-rule="${esc(id)}" title="Find dates and place names in the text without AI">${s.ruleEvents!=null?`Re-map dates & places (${s.ruleEvents})`:"Map dates & places"}</button>`:""}
       ${canRead?`<button class="btn primary" data-read="${esc(id)}">${p&&p.next>(s.pageFrom||1)?"Continue reading":"Read with Claude"}</button>`:""}
       ${S.canWrite?`<button class="btn" data-del="${esc(id)}">Delete</button>`:""}</div></div>`;
   }).join("") || `<div class="empty">No sources yet.</div>`;
