@@ -746,6 +746,7 @@ a.btn.primary{color:var(--panel)}
 #minimap{height:230px;border-radius:4px;border:1px solid var(--line);background:var(--sea)}#mmslot:empty{display:none}
 .mmnum span{display:inline-block;min-width:16px;padding:0 3px;border-radius:8px;color:#fff;font:600 10px/16px var(--f-body);text-align:center;border:1px solid #fff;transform:translate(-50%,-50%)}
 body.osm .lbl-place{display:none}#mapstyle .btn.on{background:var(--ink);color:var(--panel)}
+.maplegend.senslg{left:auto;right:10px;bottom:28px;max-width:240px}
 .authbox{display:flex;gap:6px;align-items:center;margin-left:8px}.chip{padding:2px 8px;font-size:12px}.chip.on{background:var(--ink);color:var(--panel)}.yearchips{flex-wrap:wrap;gap:4px}
 .chat{margin:12px 16px 0;padding:10px;border:1px solid var(--line);border-radius:6px;display:flex;flex-direction:column;gap:6px;background:var(--bg)}
 #chatlog{display:flex;flex-direction:column;gap:6px;max-height:320px;overflow:auto}.cmsg{padding:6px 9px;border-radius:6px;white-space:pre-wrap;font-size:13px}.cmsg.user{align-self:flex-end;background:var(--ink);color:var(--panel);max-width:85%}.cmsg.ai{background:var(--panel);border:1px solid var(--line)}
@@ -924,6 +925,7 @@ mark{background:color-mix(in srgb,var(--warn) 40%,transparent);color:inherit;pad
     <div id="map" aria-label="Map"></div>
     <div class="mapmode" id="mapmode" hidden></div>
     <div class="maplegend" id="legend"></div>
+    <div class="maplegend senslg" id="senslegend" hidden></div>
   </main>
   <section class="report" id="report" aria-live="polite"></section>
 </div>
@@ -1050,7 +1052,7 @@ const fmt = n => n == null ? "—" : Math.round(n).toLocaleString("en-GB");
 const S = {events:[], sources:{}, ord:[], db:null, assets:null, sample:null,
   mode:"radius", level:"state", sel:{type:"radius", lat:START.lat, lon:START.lon, r:START.r, label:START.label},
   from:"1939-09-01", to:"1945-12-31", classes:new Set(Object.keys(CLASSES)), dud:0.10,
-  layers:{urban:true, rail:true, roads:false, rivers:true, districts:true}, loaded:{events:false}};
+  layers:{urban:true, rail:true, roads:false, rivers:true, districts:true, sens:false, finds:false}, loaded:{events:false}};
 const pagesCache = {};
 
 /* ---------- map ---------- */
@@ -1290,9 +1292,9 @@ $("#from").onchange=()=>{S.from=$("#from").value||"1900-01-01"; drawEvents(); re
 $("#to").onchange=()=>{S.to=$("#to").value||"2100-01-01"; drawEvents(); render();};
 $("#classes").innerHTML = Object.entries(CLASSES).filter(([k])=>!["recon","transport"].includes(k)).map(([k,c])=>`<label class="chk"><input type="checkbox" data-cl="${k}" checked><span class="dot" style="background:var(${c.v})"></span>${esc(c.label)}</label>`).join("");
 $("#classes").querySelectorAll("input").forEach(i=>i.onchange=()=>{ i.checked?S.classes.add(i.dataset.cl):S.classes.delete(i.dataset.cl); if(i.dataset.cl==="other"){["recon","transport"].forEach(k=>i.checked?S.classes.add(k):S.classes.delete(k));} drawEvents(); render(); });
-const LAYERS={urban:"Built-up areas",rail:"Railways",roads:"Major roads",rivers:"Rivers and lakes",districts:"District borders (DE)"};
+const LAYERS={sens:"Sensitivity map (finds + war events)",finds:"Find reports – points (owner)",urban:"Built-up areas",rail:"Railways",roads:"Major roads",rivers:"Rivers and lakes",districts:"District borders (DE)"};
 $("#layers").innerHTML = Object.entries(LAYERS).map(([k,l])=>`<label class="chk"><input type="checkbox" data-ly="${k}" ${S.layers[k]?"checked":""}>${l}</label>`).join("");
-$("#layers").querySelectorAll("input").forEach(i=>i.onchange=()=>{S.layers[i.dataset.ly]=i.checked; applyLayers();});
+$("#layers").querySelectorAll("input").forEach(i=>i.onchange=()=>{S.layers[i.dataset.ly]=i.checked; if(i.dataset.ly==="sens"){ drawSens(); renderSoon(); } else if(i.dataset.ly==="finds") drawFindPts(); else applyLayers();});
 document.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>{ document.querySelectorAll(".tabs button").forEach(x=>x.setAttribute("aria-selected",x===b)); document.querySelectorAll(".pane").forEach(p=>p.hidden=p.id!==b.dataset.pane); });
 function legend(){
   const armies=["US First Army","US Third Army","US Seventh Army","US Ninth Army","British Second Army","Canadian First Army","French First Army"];
@@ -1436,7 +1438,7 @@ function render(){
   const srcIds=[...new Set(evs.map(e=>e.sourceId))];
   let h = `<div class="head"><span class="lbl">Historisch-genetische Rekonstruktion</span><h2>${areaTxt}</h2>
     <div class="meta">${coords}${esc(S.from)} – ${esc(S.to)} · ${evs.length} recorded event${evs.length===1?"":"s"} from ${srcIds.length} source${srcIds.length===1?"":"s"}</div>
-    <div class="row"><button class="btn" data-jump="sec1">1 Events</button><button class="btn" data-jump="sec2">2 Ordnance</button><button class="btn" data-jump="sec3">3 Finds</button></div>
+    <div class="row"><button class="btn" data-jump="sec1">1 Events</button><button class="btn" data-jump="sec2">2 Ordnance</button><button class="btn" data-jump="sec3">3 Finds</button><button class="btn" data-jump="sec4">4 Sensitivity</button></div>
     <div class="row"><button class="btn" id="copyrep">Copy report</button>${S.sample?`<select id="nlang" aria-label="Language"><option value="German">Deutsch</option><option value="English">English</option></select><button class="btn primary" id="narrate">Write text with Claude</button>`:""}</div>
     </div><div id="narrbox" class="narr" style="margin:12px 16px 0" ${S.narrKey===areaTxt&&S.narrHtml?"":"hidden"}>${S.narrKey===areaTxt?S.narrHtml||"":""}</div>
     ${S.sample&&evs.length?`<div class="chat"><span class="lbl">Ask about this area <span class="de">KI-Assistent</span></span><div class="row" style="flex-wrap:wrap;gap:4px">${CHAT_PRESETS.map((q,i)=>`<button class="btn chip" data-cp="${i}">${esc(q[0])}</button>`).join("")}</div><div id="chatlog">${(S.chat[areaTxt]||[]).map(chatHtml).join("")}</div><div class="row"><input type="text" id="chatq" placeholder="e.g. Which units fought here in April 1945?" style="flex:1"><button class="btn primary" id="chatgo">Ask</button></div></div>`:!S.sample&&evs.length?`<div class="chat"><span class="hint">AI summaries and questions are available to the map owner. ${KHM.isOwner?"":"Sign in as owner to use them."}</span></div>`:""}`;
@@ -1485,8 +1487,11 @@ function render(){
       <li>Check ground-fighting and post-war use of the area (April 1945 front lines, depots, occupation camps).</li></ul>`;
   }
   h += `<div class="disc">This is a desk-study aid built from the sources loaded into this map. It does not replace a historical investigation or a clearance survey by a qualified Kampfmittel specialist.</div></div>`;
+  if (SENS.grid) computeSens();
+  h += sensSection();
   $("#report").innerHTML = h;
   wireSrcButtons($("#report"));
+  wireSens();
   $("#report").querySelectorAll("tr.main").forEach(tr=>{ const t=()=>{ const d=$(`#report tr[data-d="${tr.dataset.i}"]`); d.hidden=!d.hidden; }; tr.onclick=t; tr.onkeydown=e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();t();}}; });
   $("#report").querySelectorAll("button.src[data-ord]").forEach(b=>b.onclick=()=>openOrdSource(S.ord.find(o=>o._id===b.dataset.ord)));
   $("#copyrep").onclick=()=>copyReport(evs,A,areaTxt);
@@ -1531,6 +1536,99 @@ ${SIT.res?.hits?.length?`FRONT LINE: 12th Army Group situation maps show front-l
 function wireCites(evs){
   $("#narrbox")?.querySelectorAll(".cite").forEach(c=>c.onclick=()=>{ const e=evs[+c.dataset.e-1]; if(!e) return; const r=document.getElementById("row-"+e._id); r?.scrollIntoView({block:"center"}); r?.classList.add("flash"); setTimeout(()=>r?.classList.remove("flash"),1600); map.setView([e.lat,e.lon],Math.max(map.getZoom(),11)); });
 }
+
+/* ---------- sensitivity map: find reports + war events ---------- */
+const SENS = {grid:null, cells:null, layer:L.layerGroup(), pts:null, ptLayer:L.layerGroup()};
+const SENS_CLASSES=[[0.7,"Very high","#9d0208"],[0.5,"High","#e85d04"],[0.3,"Medium","#f4a261"],[0.15,"Low","#ffd166"],[0.0001,"Very low","#fff3b0"]];
+const sensClass = v => SENS_CLASSES.find(c=>v>=c[0]) || [0,"No data","#cccccc"];
+const FIND_LBL={bomb_large:"Bombs ≥ 250 kg / 500 lb",bomb_small:"Smaller bombs, frag bombs",incendiary:"Incendiaries",ground:"Shells, grenades, Panzerfaust, mines",small:"Infantry ammunition, fuzes, parts"};
+async function loadSens(){
+  if (SENS.grid) return SENS.grid;
+  try{ SENS.grid = await fetch("data/finds_grid.json").then(r=>r.json()); }catch{ SENS.grid={cells:[],dlat:.02,dlon:.03,coverage:[0,0,0,0],total:0}; }
+  return SENS.grid;
+}
+function computeSens(){
+  const G=SENS.grid; if(!G) return null;
+  const DLAT=G.dlat, DLON=G.dlon, cov=G.coverage, cells=new Map();
+  const cell=(i,j)=>{ const k=i+","+j; let c=cells.get(k); if(!c){ c={i,j,lat:(i+.5)*DLAT,lon:(j+.5)*DLON,n:0,w:0,cls:{},air:0,tons:0,attacks:0,ground:0}; cells.set(k,c);} return c; };
+  for (const r of G.cells){ const c=cell(r[0],r[1]); c.n=r[2]; c.w=r[3]; c.cls={bomb_large:r[4],bomb_small:r[5],incendiary:r[6],ground:r[7],small:r[8]}; c.maxr=r[9]; c.y0=r[10]; c.y1=r[11]; }
+  for (const e of S.events){ if(!visible(e)||e.lat==null) continue; const c=cell(Math.floor(e.lat/DLAT),Math.floor(e.lon/DLON));
+    if (e.missionClass==="ground") c.ground++;
+    else if ((CLASSES[e.missionClass]?.bombs||0)>0 || tonsOf(e)>0){ c.attacks++; c.tons += tonsOf(e) || (e.aircraftCount||ASSUMED[e.missionClass]||4)*(CLASSES[e.missionClass]?.bombs||2)*0.11; } }
+  const vals=f=>[...cells.values()].map(f).filter(v=>v>0).sort((a,b)=>a-b);
+  const p95=a=>a.length?Math.log1p(a[Math.floor(a.length*.95)]):1;
+  const sF=p95(vals(c=>c.w)), sA=p95(vals(c=>c.tons+2*c.attacks)), sG=p95(vals(c=>c.ground));
+  for (const c of cells.values()){
+    c.inCov = c.lon>=cov[0]&&c.lon<=cov[2]&&c.lat>=cov[1]&&c.lat<=cov[3];
+    c.f = Math.min(1,Math.log1p(c.w)/sF); c.a=Math.min(1,Math.log1p(c.tons+2*c.attacks)/sA); c.g=Math.min(1,Math.log1p(c.ground)/sG);
+    c.score = c.inCov ? 0.5*c.f+0.3*c.a+0.2*c.g : 0.6*c.a+0.4*c.g;
+  }
+  SENS.cells=cells; return cells;
+}
+async function drawSens(){
+  SENS.layer.clearLayers();
+  if (!S.layers.sens){ map.removeLayer(SENS.layer); $("#senslegend").hidden=true; return; }
+  await loadSens(); const cells=computeSens(); const G=SENS.grid;
+  for (const c of cells.values()){ if(c.score<0.0001) continue; const [,lbl,col]=sensClass(c.score);
+    const r=L.rectangle([[c.i*G.dlat,c.j*G.dlon],[(c.i+1)*G.dlat,(c.j+1)*G.dlon]],{stroke:false,fillColor:col,fillOpacity:.5,bubblingMouseEvents:true});
+    r.bindTooltip(`<b>${lbl}</b> sensitivity · ${(c.score*100).toFixed(0)}/100<br>${c.n?`${c.n} reported finds`:c.inCov?"no reported finds":"outside the find-report area"}${c.n&&c.cls.bomb_large?` (${c.cls.bomb_large} large bombs)`:""}<br>${c.attacks} air attacks${c.tons?` · ~${fmt(c.tons)} t`:""} · ${c.ground} ground actions<br><i>Approximate – treat with caution</i>`,{sticky:true});
+    r.addTo(SENS.layer); }
+  SENS.layer.addTo(map);
+  $("#senslegend").hidden=false;
+  $("#senslegend").innerHTML=`<span class="lbl">Sensitivity</span>`+SENS_CLASSES.map(c=>`<span class="row" style="gap:6px"><span class="dot" style="background:${c[2]};border-radius:2px"></span>${c[1]}</span>`).join("")+`<span class="hint" style="max-width:210px">2 km cells. Find reports (${G.total.toLocaleString("de-DE")}, Bavaria) 50 %, air attacks 30 %, ground fighting 20 %. Approximate, based on the find report – not precise, treat with caution.</span>`;
+}
+async function loadFindPts(){
+  if (SENS.pts) return SENS.pts; const src=S.sources["finds-report"];
+  if (!src?.findsAssetId || !canOpen(src.findsAssetId)) return null;
+  try{ const txt=await (await KHM.blob(src.findsAssetId)).text(); SENS.pts=JSON.parse(txt).points; }catch{ SENS.pts=null; }
+  return SENS.pts;
+}
+const FIND_COL={bomb_large:"#9d0208",bomb_small:"#e85d04",incendiary:"#b8860b",ground:"#5a189a",small:"#6b7280"};
+async function drawFindPts(){
+  SENS.ptLayer.clearLayers();
+  if (!S.layers.finds){ map.removeLayer(SENS.ptLayer); return; }
+  const pts=await loadFindPts(); if(!pts){ return; }
+  const b=map.getBounds().pad(.2), big=map.getZoom()>=14;
+  for (const p of pts){ if(!b.contains([p.lat,p.lon])) continue;
+    const opt={color:FIND_COL[p.c],weight:1,fillColor:FIND_COL[p.c],fillOpacity:.6};
+    const m = big ? L.circle([p.lat,p.lon],{...opt,radius:p.rad||10}) : L.circleMarker([p.lat,p.lon],{...opt,radius:3});
+    m.bindTooltip(`<b>${esc(p.kal||"?")}</b>${p.zue?` · ${esc(p.zue)}`:""}<br>${esc(p.date)} · ${esc(p.ort)}${p.str?", "+esc(p.str):""}<br>Location from: ${esc(p.prec||"?")} · effect radius ${p.rad} m (not an evacuation radius)`);
+    m.addTo(SENS.ptLayer); }
+  SENS.ptLayer.addTo(map);
+}
+map.on("moveend",()=>{ if(S.layers.finds) drawFindPts(); });
+async function importFinds(file){
+  const st=$("#modebox"); st.insertAdjacentHTML("beforeend",`<span class="hint" id="fmsg">Reading the find reports…</span>`);
+  try{ const txt=await new Response(file.stream().pipeThrough(new DecompressionStream("gzip"))).text(); const j=JSON.parse(txt);
+    const a=await S.assets.upload(new Blob([txt],{type:"application/json"}),{type:"application/json"});
+    await S.db.doc("sources/finds-report").set({title:"Fundmunition report (find reports, Stand 26.02.2025)",author:"Find report list",kind:"reference",web:false,findsAssetId:a.id,count:j.points.length,note:"Reported finds with caliber, fuze, date and place. Locations from coordinates, addresses, place names or maps: not precise. Shown to visitors only as 2 km sensitivity cells.",createdAt:new Date().toISOString()});
+    SENS.pts=j.points; $("#fmsg").textContent=`${j.points.length.toLocaleString("de-DE")} find reports stored privately. Switch on “Find reports – points” under Map layers.`;
+  }catch(e){ $("#fmsg").textContent="Could not import: "+(e.message||e.code||"error"); }
+}
+function sensSection(){
+  const G=SENS.grid;
+  let h=`<div class="sec" id="sec4"><h3><span class="n">4</span>Sensitivity map <span class="de">Sensibilität aus Fundmunition und Kriegsereignissen</span></h3>`;
+  if (!G||!SENS.cells){ return h+`<div class="empty">Loading…</div></div>`; }
+  const cs=[...SENS.cells.values()].filter(c=>inSel(c));
+  const sum=f=>cs.reduce((a,c)=>a+f(c),0);
+  const n=sum(c=>c.n), att=sum(c=>c.attacks), tons=sum(c=>c.tons), gr=sum(c=>c.ground), cov=cs.some(c=>c.inCov);
+  const best=cs.reduce((m,c)=>Math.max(m,c.score),0), scored=cs.filter(c=>c.score>0), mean=scored.length?scored.reduce((a,c)=>a+c.score,0)/scored.length:0;
+  const [,lbl,col]=sensClass(best);
+  const by={}; cs.forEach(c=>Object.entries(c.cls||{}).forEach(([k,v])=>by[k]=(by[k]||0)+v));
+  h+=`<div class="risk" style="border-color:${col}"><span class="lvl">${best?lbl:"No data"}</span><span class="hint">highest cell ${(best*100).toFixed(0)}/100 · average ${(mean*100).toFixed(0)}/100 over ${scored.length} cells of ~2 km</span></div>
+  <div class="tiles"><div class="tile"><div class="v">${n.toLocaleString("de-DE")}</div><div class="k">Reported finds</div></div><div class="tile"><div class="v">${att}</div><div class="k">Air attacks${tons?` · ~${fmt(tons)} t`:""}</div></div><div class="tile"><div class="v">${gr}</div><div class="k">Ground actions</div></div></div>`;
+  if (!cov) h+=`<span class="hint">This area is outside the find-report area (Bavaria), so the score uses only air attacks and ground fighting.</span>`;
+  if (n) h+=`<span class="lbl">Reported finds by type</span>`+Object.entries(by).filter(([,v])=>v).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<div class="row" style="justify-content:space-between"><span><span class="dot" style="background:${FIND_COL[k]}"></span> ${esc(FIND_LBL[k]||k)}</span><span class="mono">${v}</span></div>`).join("");
+  if (SENS.pts){ const list=SENS.pts.filter(p=>inSel(p)).sort((a,b)=>(b.rad-a.rad)||String(b.date).localeCompare(a.date)).slice(0,40);
+    if (list.length) h+=`<span class="lbl">Largest finds in this area (owner view)</span>`+list.map(p=>`<div class="evrow"><div class="d">${esc(p.date)}</div><div class="t"><span class="p">${esc(p.kal||"?")}${p.zue?` · ${esc(p.zue)}`:""}</span><span class="s">${esc(p.ort)}${p.str?", "+esc(p.str):""}</span><span class="meta-line"><span>${esc(p.typ)}</span><span>· location: ${esc(p.prec||"?")}</span><span class="mono">· ${p.rad} m</span></span></div></div>`).join(""); }
+  else if (KHM.isOwner) h+=`<span class="hint">Import the find-report file under Sources to see the individual finds here (only you can see them).</span>`;
+  h+=`<span class="hint">How the score works: each ~2 km cell combines reported finds (weighted by the effect radius of each find, 50 %), air attacks and recorded bomb tonnage (30 %) and ground fighting (20 %), each scaled against all cells; outside the find-report area only war events count. The current filters (period, event types, sources) are applied to the war events.</span>
+  <div class="find" style="border-left:4px solid var(--crit)"><b>Disclaimer – treat with caution</b><span>The points and cells are <b>not precise</b>. They are based on the Fundmunition report (find reports) and the historical sources loaded here; many find locations are only an address, a place name or a map estimate. The sensitivity map is <b>not 100 % reliable</b> and only shows where finds and war events concentrate. Areas without data are not free of ordnance. The effect radius in the report is <b>not an evacuation or exclusion radius</b>. Always check with the responsible Kampfmittelbeseitigungsdienst and a qualified specialist.</span></div>
+  <label class="chk"><input type="checkbox" id="sens-on" ${S.layers.sens?"checked":""}>Show the sensitivity map on the main map</label></div>`;
+  return h;
+}
+function wireSens(){ const c=$("#sens-on"); if(c) c.onchange=()=>{ S.layers.sens=c.checked; const l=document.querySelector('[data-ly="sens"]'); if(l) l.checked=c.checked; drawSens(); }; }
+loadSens().then(()=>{ computeSens(); renderSoon(); });
 
 /* ---------- AI chat ---------- */
 S.chat={};
@@ -1680,10 +1778,12 @@ function renderAuth(){
   $("#login")&&($("#login").onclick=()=>{ openModal("#m-login"); $("#li-email").focus(); });
   const mb=$("#modebox");
   mb.innerHTML = KHM.isOwner
-    ? `<b>Owner mode</b><span>Documents you add are stored in your private Supabase storage; map points and sources are saved in your database and shown to visitors (files and page texts stay private).</span><label class="btn" style="width:max-content">Import page-text bundle (.json.gz)<input type="file" id="bundle" accept=".gz,.json.gz" hidden></label>`
+    ? `<b>Owner mode</b><span>Documents you add are stored in your private Supabase storage; map points and sources are saved in your database and shown to visitors (files and page texts stay private).</span><label class="btn" style="width:max-content">Import page-text bundle (.json.gz)<input type="file" id="bundle" accept=".gz,.json.gz" hidden></label><label class="btn" style="width:max-content">Import find reports (.json.gz)<input type="file" id="findsfile" accept=".gz,.json.gz" hidden></label>`
     : `<b>Visitor mode</b><span>Add your own chronologies, diaries or reports: the files are read and mapped in your browser and stay only in this browser. If you agree when uploading, the dates, places and forces found (not the files) are sent to the map owner, who checks them before adding them to the public map. ${KHM.localCount()?`You have ${KHM.localCount()} items stored here.`:""}</span>${KHM.localCount()?`<button class="btn" id="clearlocal" style="width:max-content">Delete my local data</button>`:""}`;
   renderContribs(); $("#u-share-l").hidden = KHM.isOwner || !KHM.configured;
   let tq; $("#txtq").oninput=()=>{ clearTimeout(tq); tq=setTimeout(()=>searchTexts($("#txtq").value),400); };
+  $("#findsfile")&&($("#findsfile").onchange=e=>e.target.files[0]&&importFinds(e.target.files[0]));
+  { const fl=document.querySelector('[data-ly="finds"]')?.closest("label"); if(fl) fl.hidden=!KHM.isOwner; }
   $("#bundle")&&($("#bundle").onchange=e=>e.target.files[0]&&importBundle(e.target.files[0]));
   $("#clearlocal")&&($("#clearlocal").onclick=()=>confirmDlg("Delete all documents and events you added in this browser?",()=>KHM.clearLocal()));
   $("#u-readnow-t").textContent = S.sample ? "Read the stored files with Claude right away (one after another; you can pause)" : "Find dates and places in the stored files right away (no AI, in your browser)";
