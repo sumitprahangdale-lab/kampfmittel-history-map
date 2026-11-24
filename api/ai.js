@@ -39,7 +39,7 @@ export default async function handler(req, res) {
   try {
     const r = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
-      headers: { "x-api-key": process.env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json" },
+      headers: { ...(/^sk-ant-api/.test(process.env.ANTHROPIC_API_KEY) ? { "x-api-key": process.env.ANTHROPIC_API_KEY } : { authorization: "Bearer " + process.env.ANTHROPIC_API_KEY }), "anthropic-version": "2023-06-01", "content-type": "application/json" },
       body: JSON.stringify({ model, max_tokens: Math.min(Number(maxTokens) || 4000, owner ? 8000 : 2000), messages: [{ role: "user", content: prompt }] })
     });
     const j = await r.json();
