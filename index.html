@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="hud">
+<html lang="en" data-theme="light">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -1093,7 +1093,7 @@ header.top{flex-wrap:nowrap}header.top .sub{white-space:nowrap;overflow:hidden;t
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script>window.APP_VERSION="20261124-2330";</script>
+<script>window.APP_VERSION="20261125-0015";</script>
 <script src="config.js"></script>
 <script src="backend.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
@@ -1766,7 +1766,7 @@ loadSens().then(()=>{ computeSens(); renderSoon(); });
 /* ---------- design switch + phone navigation ---------- */
 (function(){
   let th; try{ th=localStorage.getItem("khm-theme"); }catch{}
-  document.documentElement.dataset.theme = th==="light" ? "light" : "hud";
+  document.documentElement.dataset.theme = th==="hud" ? "hud" : "light";
   $("#themebtn").onclick=()=>{ const n=document.documentElement.dataset.theme==="hud"?"light":"hud"; document.documentElement.dataset.theme=n; try{ localStorage.setItem("khm-theme",n); }catch{} restyle(); buildLabels(); if(mini){ mini.remove(); mini=null; } render(); };
 })();
 function mview(v){
