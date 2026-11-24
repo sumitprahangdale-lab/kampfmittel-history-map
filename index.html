@@ -954,6 +954,10 @@ mark{background:color-mix(in srgb,var(--warn) 40%,transparent);color:inherit;pad
           <label class="btn" for="u-folder">Choose a folder…</label><input type="file" id="u-folder" webkitdirectory multiple hidden>
           <span class="hint" id="u-count">PDF (text or scan), .txt or .md. Each file is checked against what is already stored.</span>
         </div>
+        <details class="paste"><summary class="btn" style="width:max-content">Or paste text (article, diary entry, notes)…</summary>
+          <div class="group" style="margin-top:6px"><input type="text" id="u-ptitle" placeholder="Title, e.g. Diary of Anna K., April 1945">
+          <textarea id="u-ptext" rows="6" placeholder="Paste the text here. Dates and place names in it become points on the map."></textarea>
+          <button class="btn" id="u-padd" style="width:max-content">Add this text</button></div></details>
         <div id="u-queue" class="group" style="gap:4px"></div>
       </div>
       <div class="grid2">
@@ -1918,6 +1922,8 @@ function addFiles(list){
   renderQueue();
 }
 $("#u-file").onchange=()=>addFiles($("#u-file").files);
+$("#u-padd").onclick=()=>{ const t=$("#u-ptext").value.trim(); if(t.length<20) return; const name=($("#u-ptitle").value.trim()||"Pasted text "+new Date().toISOString().slice(0,16).replace("T"," ")).replace(/[\\/:*?"<>|]/g,"-")+".txt";
+  addFiles([new File([t],name,{type:"text/plain"})]); $("#u-ptext").value=""; $("#u-ptitle").value=""; };
 $("#u-folder").onchange=()=>addFiles($("#u-folder").files);
 function renderQueue(){
   $("#u-count").textContent = queue.length ? `${queue.length} file${queue.length>1?"s":""} selected (${(queue.reduce((s,q)=>s+q.file.size,0)/1048576).toFixed(0)} MB)` : "PDF (text or scan), .txt or .md. Each file is checked against what is already stored.";
@@ -2075,7 +2081,7 @@ ${text}`;
   return `You extract a geocoded event index from a historical source for an unexploded-ordnance (UXO) desk study. Source: "${src.title}". Pages follow, each starting with "=== PAGE n ===".
 The last date heading seen before these pages: ${lastDate||"unknown"}.
 Scope: only events located in ${src.scope||"any country"}; skip everything else.
-Extract every event that happened at a named place: bombing attacks (primary, secondary, targets of opportunity), fighter-bomber attacks, strafing, sweeps over a named area, air combat near a place, ground fighting, unit moves to airfields or towns, depot explosions. One object per place per event:
+Extract every event that happened at a named place: bombing attacks (primary, secondary, targets of opportunity), fighter-bomber attacks, strafing, sweeps over a named area, air combat near a place, ground fighting (attacks, captures, river crossings, counterattacks, shelling, house-to-house fighting), unit moves to airfields or towns, depot explosions; in diaries and local reports also air-raid alarms with bombs falling, artillery fire, blown bridges, ammunition dumps, abandoned weapons and reported duds (Blindgänger). For ground fighting add "unit" (e.g. "10th Armd Div", "1st Bn 26th Inf") and "army" (one of "US First Army","US Third Army","US Seventh Army","US Ninth Army","British Second Army","Canadian First Army","French First Army", or "" if unknown). One object per place per event:
 {"date": "YYYY-MM-DD" (from the date headings), "place": modern standard name, "placeAsWritten": spelling in the source, "country": ISO-2, "region": state or province, "lat": number, "lon": number (best estimate for the specific target, e.g. the marshalling yard or airfield, else the town centre), "locPrecision": "site"|"town"|"area"|"uncertain", "force": e.g. "Eighth AF", "mission": e.g. "Mission 801" or "", "aircraft": e.g. "B-17", "aircraftCount": number attacking this target if stated else null, "dispatched": number dispatched if stated else null, "missionClass": one of heavy|medium|fighter-bomber|fighter|recon|transport|unit-move|ground|other, "targetType": one of ${TARGETS.map(t=>'"'+t+'"').join(", ")} (towns hit as targets of opportunity = "city area"), "role": "primary"|"secondary"|"opportunity"|"unknown", "summary": one factual English sentence, "quote": verbatim words from the page supporting it, max 30 words, "page": the PAGE number of the quote}.
 Reply with only JSON: {"events":[...], "lastDate": "YYYY-MM-DD" (the last date heading in these pages, or the one given above)}.
 
@@ -2116,7 +2122,7 @@ async function runExtraction(id){
         for (const [k,e] of (r.events||[]).entries()){
           if (!e || !/^\d{4}-\d{2}-\d{2}$/.test(e.date||"") || !okNum(e.lat,90) || !okNum(e.lon,180)) continue;
           const pg = Number.isInteger(e.page)?e.page:c.pages[0];
-          await S.db.doc(`events/${id}-p${pg}-${String(k).padStart(3,"0")}-${c.pages[0]}`).set({date:e.date,place:String(e.place||e.placeAsWritten||"?"),placeAsWritten:String(e.placeAsWritten||""),lat:e.lat,lon:e.lon,locPrecision:String(e.locPrecision||"town"),country:String(e.country||""),region:String(e.region||""),force:String(e.force||""),mission:String(e.mission||""),aircraft:String(e.aircraft||""),aircraftCount:okNum(e.aircraftCount,1e4)?e.aircraftCount:null,dispatched:okNum(e.dispatched,1e4)?e.dispatched:null,missionClass:CLASSES[e.missionClass]?e.missionClass:"other",targetType:TARGETS.includes(e.targetType)?e.targetType:"other",role:String(e.role||"unknown"),summary:String(e.summary||"").slice(0,500),quote:e.quote?String(e.quote).slice(0,400):null,page:pg,sourceId:id,createdBy:"extraction"});
+          await S.db.doc(`events/${id}-p${pg}-${String(k).padStart(3,"0")}-${c.pages[0]}`).set({date:e.date,place:String(e.place||e.placeAsWritten||"?"),placeAsWritten:String(e.placeAsWritten||""),lat:e.lat,lon:e.lon,locPrecision:String(e.locPrecision||"town"),country:String(e.country||""),region:String(e.region||""),force:String(e.force||""),mission:String(e.mission||""),aircraft:String(e.aircraft||""),aircraftCount:okNum(e.aircraftCount,1e4)?e.aircraftCount:null,dispatched:okNum(e.dispatched,1e4)?e.dispatched:null,missionClass:CLASSES[e.missionClass]?e.missionClass:"other",targetType:e.missionClass==="ground"?"ground combat":TARGETS.includes(e.targetType)?e.targetType:"other",unit:String(e.unit||"").slice(0,120),army:String(e.army||"").slice(0,60),role:String(e.role||"unknown"),summary:String(e.summary||"").slice(0,500),quote:e.quote?String(e.quote).slice(0,400):null,page:pg,sourceId:id,createdBy:"extraction"});
           n++;
         }
         p.lastDate = lastDateIn(c.pages.map(q=>pages[q-1]).join("\n"), /^\d{4}-\d{2}-\d{2}$/.test(r.lastDate||"")?r.lastDate:p.lastDate);

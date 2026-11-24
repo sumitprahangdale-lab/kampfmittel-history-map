@@ -65,7 +65,17 @@ Put this folder into a GitHub repository (for example `kampfmittel-history-map`,
 3. **Sources** tab → **Import page-text bundle** → choose `page-texts.json.gz` (the OCR text of your scanned PDFs, made earlier).
 4. Use **Map dates & places** (free, no AI) or **Read with Claude** (more precise) on a chronology.
 
-Optional: in Vercel, set `PUBLIC_AI=true` to let visitors use the AI too (limited by `PUBLIC_AI_DAILY`, default 10 questions per day per visitor). By default only you can.
+### AI for visitors (optional)
+By default only you can use the AI. To let visitors use it too (reading their own documents into map points, the area chat), add in Vercel → Settings → Environment Variables, then Redeploy:
+
+| Name | Value | Meaning |
+|---|---|---|
+| `PUBLIC_AI` | `true` | switch the AI on for visitors |
+| `PUBLIC_AI_DAILY` | `40` | AI requests per visitor per day (reading one document takes about one request per 9,000 characters) |
+| `PUBLIC_AI_TOTAL_DAILY` | `400` | AI requests for all visitors together per day |
+| `AI_MODEL_PUBLIC` | `claude-haiku-5-5` | cheaper model for visitors (you keep the stronger one) |
+
+Visitors pay nothing; the cost goes to your Anthropic account. **Set a monthly spend limit in the Anthropic Console (Settings → Limits)** so a busy day can't cost more than you want.
 
 Optional: to make the whole map private, use the commented line in step 3 of `schema.sql`.
 

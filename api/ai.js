@@ -3,7 +3,7 @@
 // Set PUBLIC_AI=true to let visitors use it too, limited to PUBLIC_AI_DAILY requests per visitor per day.
 // Environment variables (Vercel → Project → Settings → Environment Variables):
 //   ANTHROPIC_API_KEY, SUPABASE_URL, SUPABASE_ANON_KEY, OWNER_EMAIL, optional AI_MODEL, PUBLIC_AI, PUBLIC_AI_DAILY
-const hits = new Map(); // in-memory, resets when the function restarts (good enough as a brake)
+const hits = new Map(); // in-memory, resets when the function restarts (a brake, not a guarantee: also set a spend limit in the Anthropic Console)
 
 async function whoIs(req) {
   const token = String(req.headers.authorization || "").replace(/^Bearer\s+/i, "");
@@ -20,7 +20,10 @@ function publicAllowed(req, count) {
   const key = ip + ":" + new Date().toISOString().slice(0, 10);
   const n = hits.get(key) || 0;
   if (count) hits.set(key, n + 1);
-  return n < Number(process.env.PUBLIC_AI_DAILY || 10);
+  const day = "all:" + new Date().toISOString().slice(0, 10);
+  const all = hits.get(day) || 0;
+  if (count) hits.set(day, all + 1);
+  return n < Number(process.env.PUBLIC_AI_DAILY || 40) && all < Number(process.env.PUBLIC_AI_TOTAL_DAILY || 400);
 }
 
 export default async function handler(req, res) {
@@ -35,7 +38,8 @@ export default async function handler(req, res) {
   if (typeof prompt !== "string" || !prompt.trim()) return res.status(400).json({ error: "prompt missing" });
   if (prompt.length > (owner ? 400000 : 60000)) return res.status(413).json({ error: "prompt too long" });
 
-  const model = tier === "quick" ? (process.env.AI_MODEL_QUICK || "claude-haiku-5-5") : (process.env.AI_MODEL || "claude-sonnet-5-5");
+  // visitors always use the cheaper, faster model; the owner gets the stronger one
+  const model = !owner ? (process.env.AI_MODEL_PUBLIC || "claude-haiku-5-5") : tier === "quick" ? (process.env.AI_MODEL_QUICK || "claude-haiku-5-5") : (process.env.AI_MODEL || "claude-sonnet-5-5");
   try {
     const r = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
