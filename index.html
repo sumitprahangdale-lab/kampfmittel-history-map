@@ -1656,13 +1656,14 @@ function computeSens(){
   for (const e of S.events){ if(!visible(e)||e.lat==null) continue; const c=cell(Math.floor(e.lat/DLAT),Math.floor(e.lon/DLON));
     if (e.missionClass==="ground") c.ground++;
     else if ((CLASSES[e.missionClass]?.bombs||0)>0 || tonsOf(e)>0){ c.attacks++; c.tons += tonsOf(e) || (e.aircraftCount||ASSUMED[e.missionClass]||4)*(CLASSES[e.missionClass]?.bombs||2)*0.11; } }
-  const vals=f=>[...cells.values()].map(f).filter(v=>v>0).sort((a,b)=>a-b);
+  const bav=(geo.admin1?.features||[]).find(f=>f.properties.name==="Bayern"); SENS.bav=bav;
+  for (const c of cells.values()) c.inCov = bav ? inPoly(c.lon,c.lat,bav.geometry) : (c.lon>=cov[0]&&c.lon<=cov[2]&&c.lat>=cov[1]&&c.lat<=cov[3]);
+  const vals=f=>[...cells.values()].filter(c=>c.inCov).map(f).filter(v=>v>0).sort((a,b)=>a-b);
   const p95=a=>a.length?Math.log1p(a[Math.floor(a.length*.95)]):1;
   const sF=p95(vals(c=>c.w)), sA=p95(vals(c=>c.tons+2*c.attacks)), sG=p95(vals(c=>c.ground));
   for (const c of cells.values()){
-    c.inCov = c.lon>=cov[0]&&c.lon<=cov[2]&&c.lat>=cov[1]&&c.lat<=cov[3];
     c.f = Math.min(1,Math.log1p(c.w)/sF); c.a=Math.min(1,Math.log1p(c.tons+2*c.attacks)/sA); c.g=Math.min(1,Math.log1p(c.ground)/sG);
-    c.score = c.inCov ? 0.5*c.f+0.3*c.a+0.2*c.g : 0.6*c.a+0.4*c.g;
+    c.score = c.inCov ? 0.5*c.f+0.3*c.a+0.2*c.g : 0; // only Bavaria has find reports, so the map covers Bavaria only
   }
   SENS.cells=cells; return cells;
 }
@@ -1671,21 +1672,31 @@ let sensHeat=null, sensTip=null;
 function sensRadius(){ // ~2.6 km in screen pixels at the current zoom
   const c=map.getCenter(), p1=map.latLngToContainerPoint(c), p2=map.latLngToContainerPoint([c.lat+0.0235,c.lng]); return Math.max(6,Math.min(80,Math.abs(p2.y-p1.y)));
 }
+let sensMask=null;
 async function drawSens(){
   if (sensHeat){ map.removeLayer(sensHeat); sensHeat=null; }
+  if (sensMask){ map.removeLayer(sensMask); sensMask=null; }
   if (!S.layers.sens){ $("#senslegend").hidden=true; return; }
   await loadSens(); const cells=computeSens(); const G=SENS.grid;
+  if (SENS.bav){ // dim everything outside Bavaria and outline the covered area
+    const g=SENS.bav.geometry, rings=g.type==="Polygon"?[g.coordinates[0]]:g.coordinates.map(p=>p[0]);
+    const world=[[-85,-180],[-85,180],[85,180],[85,-180]];
+    sensMask=L.layerGroup([
+      L.polygon([world,...rings.map(r=>r.map(([x,y])=>[y,x]))],{stroke:false,fillColor:css("--bg"),fillOpacity:.55,interactive:false,pane:"selp"}),
+      L.polygon(rings.map(r=>r.map(([x,y])=>[y,x])),{color:css("--accent"),weight:1.5,dashArray:"6 5",fill:false,interactive:false,pane:"selp"}).bindTooltip("Sensitivity map: Bavaria only (find reports)",{permanent:false})
+    ]).addTo(map);
+  }
   const pts=[...cells.values()].filter(c=>c.score>0.02).map(c=>[c.lat,c.lon,c.score]);
   const r=sensRadius();
   sensHeat=L.heatLayer(pts,{radius:r,blur:r*0.9,max:1.6,minOpacity:0.08,maxZoom:map.getZoom(),gradient:SENS_GRAD}).addTo(map);
   $("#senslegend").hidden=false;
-  $("#senslegend").innerHTML=`<span class="lbl">Sensitivity</span><div class="sgrad"></div><div class="row" style="justify-content:space-between"><span class="hint">very low</span><span class="hint">medium</span><span class="hint">very high</span></div><span class="hint">Find reports (${G.total.toLocaleString("de-DE")}, Bavaria) 50 %, air attacks 30 %, ground fighting 20 %. Hover the map for values. Approximate, based on the find report – not precise, treat with caution.</span>`;
+  $("#senslegend").innerHTML=`<span class="lbl">Sensitivity</span><div class="sgrad"></div><div class="row" style="justify-content:space-between"><span class="hint">very low</span><span class="hint">medium</span><span class="hint">very high</span></div><span class="hint"><b>Bavaria only</b> – the find reports (${G.total.toLocaleString("de-DE")}) exist only there; the rest of the map is dimmed. Finds 50 %, air attacks 30 %, ground fighting 20 %. Hover for values. Approximate – not precise, treat with caution.</span>`;
 }
 map.on("zoomend",()=>{ if(S.layers.sens&&sensHeat){ const r=sensRadius(); sensHeat.setOptions({radius:r,blur:r*0.9,maxZoom:map.getZoom()}); } });
 map.on("mousemove",e=>{
   if (!S.layers.sens||!SENS.cells||!SENS.grid){ sensTip&&map.closeTooltip(sensTip); return; }
   const G=SENS.grid, c=SENS.cells.get(Math.floor(e.latlng.lat/G.dlat)+","+Math.floor(e.latlng.lng/G.dlon));
-  if (!c||c.score<0.02){ sensTip&&map.closeTooltip(sensTip); return; }
+  if (!c||!c.inCov||c.score<0.02){ sensTip&&map.closeTooltip(sensTip); return; }
   const [,lbl]=sensClass(c.score);
   sensTip=sensTip||L.tooltip({direction:"top",offset:[0,-8],className:"senstip"});
   sensTip.setLatLng(e.latlng).setContent(`<b>${lbl}</b> · ${(c.score*100).toFixed(0)}/100<br>${c.n?`${c.n} reported finds`:c.inCov?"no reported finds":"outside find-report area"} · ${c.attacks} air attacks · ${c.ground} ground actions`);
@@ -1723,7 +1734,12 @@ function sensSection(){
   const G=SENS.grid;
   let h=`<div class="sec" id="sec4"><h3><span class="n">4</span>Sensitivity map <span class="de">Sensibilität aus Fundmunition und Kriegsereignissen</span></h3>`;
   if (!G||!SENS.cells){ return h+`<div class="empty">Loading…</div></div>`; }
-  const cs=[...SENS.cells.values()].filter(c=>inSel(c));
+  const all=[...SENS.cells.values()].filter(c=>inSel(c)), cs=all.filter(c=>c.inCov);
+  if (!cs.length){
+    const att=all.reduce((a,c)=>a+c.attacks,0), gr=all.reduce((a,c)=>a+c.ground,0);
+    return h+`<div class="find" style="border-left:4px solid var(--warn)"><b>No sensitivity map for this area</b><span>The sensitivity map is only available for <b>Bavaria</b>, because the find reports cover only Bavaria. For this area, use sections 1–3: ${att} air attacks and ${gr} ground actions are recorded here.</span></div><div class="find" style="border-left:4px solid var(--crit)"><b>Disclaimer – treat with caution</b><span>Areas without find reports are not free of ordnance.</span></div></div>`;
+  }
+  const partial = cs.length<all.length;
   const sum=f=>cs.reduce((a,c)=>a+f(c),0);
   const n=sum(c=>c.n), att=sum(c=>c.attacks), tons=sum(c=>c.tons), gr=sum(c=>c.ground), cov=cs.some(c=>c.inCov);
   const best=cs.reduce((m,c)=>Math.max(m,c.score),0), scored=cs.filter(c=>c.score>0), mean=scored.length?scored.reduce((a,c)=>a+c.score,0)/scored.length:0;
@@ -1731,12 +1747,12 @@ function sensSection(){
   const by={}; cs.forEach(c=>Object.entries(c.cls||{}).forEach(([k,v])=>by[k]=(by[k]||0)+v));
   h+=`<div class="risk" style="border-color:${col}"><span class="lvl">${best?lbl:"No data"}</span><span class="hint">highest cell ${(best*100).toFixed(0)}/100 · average ${(mean*100).toFixed(0)}/100 over ${scored.length} cells of ~2 km</span></div>
   <div class="tiles"><div class="tile"><div class="v">${n.toLocaleString("de-DE")}</div><div class="k">Reported finds</div></div><div class="tile"><div class="v">${att}</div><div class="k">Air attacks${tons?` · ~${fmt(tons)} t`:""}</div></div><div class="tile"><div class="v">${gr}</div><div class="k">Ground actions</div></div></div>`;
-  if (!cov) h+=`<span class="hint">This area is outside the find-report area (Bavaria), so the score uses only air attacks and ground fighting.</span>`;
+  if (partial) h+=`<span class="hint">Only the Bavarian part of the selected area is rated (${cs.length} of ${all.length} cells); outside Bavaria there are no find reports.</span>`;
   if (n) h+=`<span class="lbl">Reported finds by type</span>`+Object.entries(by).filter(([,v])=>v).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<div class="row" style="justify-content:space-between"><span><span class="dot" style="background:${FIND_COL[k]}"></span> ${esc(FIND_LBL[k]||k)}</span><span class="mono">${v}</span></div>`).join("");
   if (SENS.pts){ const list=SENS.pts.filter(p=>inSel(p)).sort((a,b)=>(b.rad-a.rad)||String(b.date).localeCompare(a.date)).slice(0,40);
     if (list.length) h+=`<span class="lbl">Largest finds in this area (owner view)</span>`+list.map(p=>`<div class="evrow"><div class="d">${esc(p.date)}</div><div class="t"><span class="p">${esc(p.kal||"?")}${p.zue?` · ${esc(p.zue)}`:""}</span><span class="s">${esc(p.ort)}${p.str?", "+esc(p.str):""}</span><span class="meta-line"><span>${esc(p.typ)}</span><span>· location: ${esc(p.prec||"?")}</span><span class="mono">· ${p.rad} m</span></span></div></div>`).join(""); }
   else if (KHM.isOwner) h+=`<span class="hint">Import the find-report file under Sources to see the individual finds here (only you can see them).</span>`;
-  h+=`<span class="hint">How the score works: each ~2 km cell combines reported finds (weighted by the effect radius of each find, 50 %), air attacks and recorded bomb tonnage (30 %) and ground fighting (20 %), each scaled against all cells; outside the find-report area only war events count. The current filters (period, event types, sources) are applied to the war events.</span>
+  h+=`<span class="hint">How the score works: each ~2 km cell combines reported finds (weighted by the effect radius of each find, 50 %), air attacks and recorded bomb tonnage (30 %) and ground fighting (20 %), each scaled against all cells; the map covers Bavaria only, the area of the find reports. The current filters (period, event types, sources) are applied to the war events.</span>
   <div class="find" style="border-left:4px solid var(--crit)"><b>Disclaimer – treat with caution</b><span>The points and cells are <b>not precise</b>. They are based on the Fundmunition report (find reports) and the historical sources loaded here; many find locations are only an address, a place name or a map estimate. The sensitivity map is <b>not 100 % reliable</b> and only shows where finds and war events concentrate. Areas without data are not free of ordnance. The effect radius in the report is <b>not an evacuation or exclusion radius</b>. Always check with the responsible Kampfmittelbeseitigungsdienst and a qualified specialist.</span></div>
   <label class="chk"><input type="checkbox" id="sens-on" ${S.layers.sens?"checked":""}>Show the sensitivity map on the main map</label></div>`;
   return h;
