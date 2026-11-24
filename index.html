@@ -870,6 +870,7 @@ mark{background:color-mix(in srgb,var(--warn) 40%,transparent);color:inherit;pad
 :root[data-theme="hud"] .dlg{background:#0a111a;border-color:#1d4b60;box-shadow:0 0 40px rgba(0,229,255,.12)}
 :root[data-theme="hud"] .pagetext,:root[data-theme="hud"] .lines,:root[data-theme="hud"] .narr,:root[data-theme="hud"] .log{background:#050a10}
 :root[data-theme="hud"] #mapwrap::after{content:"";position:absolute;inset:0;pointer-events:none;z-index:450;background:linear-gradient(rgba(0,229,255,.025) 1px,transparent 1px) 0 0/100% 48px,linear-gradient(90deg,rgba(0,229,255,.025) 1px,transparent 1px) 0 0/48px 100%;mask:radial-gradient(circle at 50% 50%,transparent 55%,#000 100%)}
+.leaflet-sitInk-pane img{filter:saturate(1.6) brightness(1.35) drop-shadow(0 0 2px rgba(255,59,92,.9))}
 .lgnote{position:absolute;top:52px;left:50%;transform:translateX(-50%);z-index:500;padding:5px 12px;border-radius:14px;font-size:12px;border:1px solid var(--line);background:var(--panel);max-width:80%;text-align:center}
 .themebtn{font-size:13px}
 header.top{flex-wrap:nowrap}header.top .sub{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}header.top h1{white-space:nowrap}
@@ -961,6 +962,7 @@ header.top{flex-wrap:nowrap}header.top .sub{white-space:nowrap;overflow:hidden;t
         <label class="chk"><input type="checkbox" id="sit-on">Show the front line of the selected day</label>
         <div class="row"><button class="btn" id="sit-prev" aria-label="Previous map">‹</button><input type="range" id="sit-i" min="0" max="97" value="0" style="flex:1" aria-label="Situation map date"><button class="btn" id="sit-next" aria-label="Next map">›</button></div>
         <div class="row" style="justify-content:space-between"><span class="mono" id="sit-date">—</span><label class="chk"><input type="checkbox" id="sit-scan">Scan underneath</label></div>
+        <div class="row" style="justify-content:space-between"><label class="chk"><input type="checkbox" id="sit-follow" checked>Camera follows the front line</label><button class="btn" id="sit-play" title="Play through the dates">▶ Play</button></div>
         <span class="hint" id="sit-sheet"></span>
       </div>
       <div class="group">
@@ -2536,10 +2538,46 @@ function showSit(i,pan){
   else if (SIT.ink){ map.removeLayer(SIT.ink); SIT.ink=null; }
   if (on && $("#sit-scan").checked){ if(!SIT.scan) SIT.scan=L.imageOverlay(sitUrl(d,false),b,{pane:"sitScan",interactive:false,opacity:.6}).addTo(map); else SIT.scan.setUrl(sitUrl(d,false)).setBounds(b); }
   else if (SIT.scan){ map.removeLayer(SIT.scan); SIT.scan=null; }
-  if (pan && on && !map.getBounds().intersects(b)) map.fitBounds(b);
+  if (on && $("#sit-follow").checked) followFront(i);
+  else if (pan && on && !map.getBounds().intersects(b)) map.fitBounds(b);
 }
-$("#sit-i").oninput=()=>showSit(+$("#sit-i").value,false);
-$("#sit-prev").onclick=()=>showSit(SIT.i-1,false); $("#sit-next").onclick=()=>showSit(SIT.i+1,false);
+/* camera follows the front line: find where the red markings are on that day's map and fly there */
+SIT.ext=new Map(); let followT=null, followSeq=0;
+async function inkExtent(i){
+  if (SIT.ext.has(i)) return SIT.ext.get(i);
+  const d=SIT.days[i]; let ext=null;
+  try{
+    const im=await loadImage(sitUrl(d,true)); const W=256, H=Math.max(1,Math.round(256*im.height/im.width));
+    const cv=document.createElement("canvas"); cv.width=W; cv.height=H; const cx=cv.getContext("2d",{willReadFrequently:true}); cx.drawImage(im,0,0,W,H);
+    const px=cx.getImageData(0,0,W,H).data, xs=[], ys=[];
+    for (let y=0;y<H;y++) for (let x=0;x<W;x++) if (px[(y*W+x)*4+3]>60){ xs.push(x); ys.push(y); }
+    if (xs.length>20){
+      xs.sort((a,b)=>a-b); ys.sort((a,b)=>a-b); const q=(a,f)=>a[Math.floor((a.length-1)*f)];
+      const [[la1,lo1],[la2,lo2]]=d.b, m1=merc(la1), m2=merc(la2);
+      const lon=x=>lo1+(x/W)*(lo2-lo1), lat=y=>{ const m=m2-(y/H)*(m2-m1); return (2*Math.atan(Math.exp(m))-Math.PI/2)*180/Math.PI; };
+      ext=L.latLngBounds([lat(q(ys,.97)),lon(q(xs,.03))],[lat(q(ys,.03)),lon(q(xs,.97))]);
+    }
+  }catch{}
+  if (!ext) ext=L.latLngBounds(d.b);
+  SIT.ext.set(i,ext); return ext;
+}
+function followFront(i){
+  clearTimeout(followT); const seq=++followSeq;
+  followT=setTimeout(async()=>{ const b=await inkExtent(i); if(seq!==followSeq) return;
+    map.flyToBounds(b.pad(.15),{duration:SIT.playing?0.9:0.7,maxZoom:10,padding:[20,20]});
+    if (i+1<SIT.days.length) inkExtent(i+1); // prefetch the next day
+  }, SIT.playing?0:180);
+}
+const sitOn=()=>{ if(!$("#sit-on").checked){ $("#sit-on").checked=true; } };
+$("#sit-i").oninput=()=>{ sitOn(); showSit(+$("#sit-i").value,false); };
+$("#sit-prev").onclick=()=>{ sitOn(); showSit(SIT.i-1,false); }; $("#sit-next").onclick=()=>{ sitOn(); showSit(SIT.i+1,false); };
+$("#sit-follow").onchange=()=>{ if($("#sit-follow").checked&&$("#sit-on").checked) followFront(SIT.i); };
+$("#sit-play").onclick=()=>{
+  if (SIT.playing){ clearInterval(SIT.playing); SIT.playing=null; $("#sit-play").textContent="▶ Play"; return; }
+  sitOn(); if (SIT.i>=SIT.days.length-1) SIT.i=-1;
+  $("#sit-play").textContent="❚❚ Pause";
+  SIT.playing=setInterval(()=>{ if(SIT.i>=SIT.days.length-1){ clearInterval(SIT.playing); SIT.playing=null; $("#sit-play").textContent="▶ Play"; return; } showSit(SIT.i+1,false); },1600);
+};
 $("#sit-on").onchange=()=>showSit(SIT.i,true); $("#sit-scan").onchange=()=>showSit(SIT.i,false);
 function selCenter(){
   const s=S.sel;
