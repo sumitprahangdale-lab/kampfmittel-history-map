@@ -88,3 +88,10 @@ Optional: to make the whole map private, use the commented line in step 3 of `sc
 THOR (US Air Force, public domain) · U.S. Army in World War II: Chronology 1941–1945 (public domain) · OpenGeoDB (public domain) · Natural Earth · deutschlandGeoJSON · OpenStreetMap / Nominatim (© OpenStreetMap contributors, ODbL) · Leaflet, pdf.js, pdf-lib, supabase-js.
 
 This is a desk-study aid. It does not replace a historical investigation or clearance survey by a qualified Kampfmittel specialist.
+
+## Update 2: text archive and visitor contributions
+Run `supabase/update-2-texts-and-contributions.sql` once in the Supabase SQL Editor (it is also included at the end of `schema.sql` for new setups).
+
+- **Text archive:** every document you upload (and the page-text bundle) is also saved page by page in the table `texts`. Search it under Sources → "Search the text of all documents". Only you can read it.
+- **Automatic reading:** on upload, dates, places, aircraft and counts (e.g. "120 B-17s"), air forces, units ("100th Inf Div"), armies and skirmishes are picked out of every line; with your API key Claude reads the document instead.
+- **Visitor contributions:** if a visitor agrees when uploading, the findings (date, place, force, unit, short quote — never the file) are sent to the table `contributions`. Visitors can only add; only you can read them. Under Sources → "Visitor contributions" you choose **Add to my map** or **Discard**.

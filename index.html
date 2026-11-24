@@ -910,6 +910,8 @@ mark{background:color-mix(in srgb,var(--warn) 40%,transparent);color:inherit;pad
     <div class="pane" id="p-src" hidden>
       <div class="row"><button class="btn primary" id="addsrc">Add documents</button><span class="hint" id="srchint"></span></div>
       <div class="find" id="modebox"></div>
+      <div class="group"><label for="txtq">Search the text of all documents</label><input type="text" id="txtq" placeholder="e.g. Blindgänger, Heilbronn, 4th Armd, Flak"><div id="txtres" class="group"></div></div>
+      <div class="group" id="contribs"></div>
       <div class="group" id="srclist"></div>
     </div>
     <div class="pane" id="p-dict" hidden>
@@ -978,6 +980,7 @@ mark{background:color-mix(in srgb,var(--warn) 40%,transparent);color:inherit;pad
         <div class="group"><label for="u-from">From page</label><input type="number" id="u-from" min="1" value="1"></div>
         <div class="group"><label for="u-to">To page</label><input type="number" id="u-to" min="1" placeholder="last"></div>
       </div>
+      <label class="chk" id="u-share-l"><input type="checkbox" id="u-share" checked><span>Share what is found (dates, places, forces, short quotes — not the file) with the map owner, who may add it to the public map</span></label>
       <label class="chk"><input type="checkbox" id="u-readnow" checked><span id="u-readnow-t">Read the stored files right away (one after another; you can pause)</span></label>
       <span class="hint" id="u-help">Files are stored with this map; anything over 20 MB is split into page-range parts so every page still opens with one click. Scanned PDFs without a text layer are stored but need OCR before they can be read: ask Claude in chat to run it. Reading puts one map point per place mentioned, with the page number and a short quote.</span>
       <div class="group" id="u-progress" hidden><div class="bar"><i id="u-bar" style="width:0%"></i></div><div class="log" id="u-log"></div></div>
@@ -1570,11 +1573,23 @@ function buildPlaceIdx(){
   (S.villages||[]).forEach(([n,lat,lon,pop])=>{ add(n,lat,lon,pop); const first=n.split(/[ ,(\/]/)[0]; if(first!==n && first.length>3) add(first,lat,lon,pop); });
   (geo.places||[]).forEach(([n,lat,lon,pop])=>add(n,lat,lon,pop));
 }
+const AC_RE=/(\d{1,4})\s*(?:x\s*)?(B-17|B-24|B-25|B-26|A-20|A-26|P-38|P-47|P-51|Lancaster|Halifax|Stirling|Wellington|Mosquito|Typhoon|Spitfire|Marauder|Fortress(?:es)?|Liberator)s?/i;
+const AC_ONLY=/\b(B-17|B-24|B-25|B-26|A-20|A-26|P-38|P-47|P-51|Lancaster|Halifax|Stirling|Wellington|Mosquito|Typhoon|Spitfire|Marauder|Fortress|Liberator|Jabo|Tiefflieger)\b/i;
+const FORCE_RE=/\b(Eighth|Ninth|Fifteenth|Twelfth|8th|9th|15th|12th|First Tactical)\s+(?:AF|Air Force)\b|\bRAF\b|\bBomber Command\b|\bUSAAF\b|\bLuftwaffe\b|\bWehrmacht\b|\bVolkssturm\b|\bWaffen-SS\b/i;
+const UNIT_RE=/\b(\d{1,3}(?:st|nd|rd|th|d)?\.?\s+(?:Armd|Armored|Armoured|Inf(?:antry)?|Abn|Airborne|Mtn|Div(?:ision)?|Bn|Battalion|Regt|Regiment|Corps|Panzer[-\w]*|Infanterie[-\w]*|Volksgrenadier[-\w]*)(?:\s+(?:Div(?:ision)?|Inf|Regt|Bn))?|(?:TF|Task Force|CC[ABR])\s[A-Z][a-z]+)\b/;
+const ARMY_RE=/\b(US First Army|First Army|Third Army|Seventh Army|Ninth Army|Fifteenth Army|British Second Army|Second Army|Canadian First Army|French First Army|Fr(?:ench)? 1st Army)\b/i;
+function forceInfo(t){
+  const o={}; const a=t.match(AC_RE); if(a){ o.aircraftCount=+a[1]; o.aircraft=a[2]; } else { const b=t.match(AC_ONLY); if(b) o.aircraft=b[1]; }
+  const f=t.match(FORCE_RE); if(f) o.force=f[0]; const u=t.match(UNIT_RE); if(u) o.unit=u[0].trim();
+  const ar=t.match(ARMY_RE); if(ar){ const n=ar[0].toLowerCase(); o.army = /french|fr /.test(n)?"French First Army":/canad/.test(n)?"Canadian First Army":/british|second/.test(n)?"British Second Army":/third/.test(n)?"US Third Army":/seventh/.test(n)?"US Seventh Army":/ninth/.test(n)?"US Ninth Army":/fifteenth/.test(n)?"US Fifteenth Army":"US First Army"; }
+  if (!o.force && o.army) o.force=o.army;
+  return o;
+}
 function guessClass(t){ t=t.toLowerCase();
   if (/b-17|b-24|fortress|liberator|lancaster|halifax|heavy bomber|eighth af|8th af|bomber command/.test(t)) return "heavy";
   if (/b-26|a-20|a-26|marauder|havoc|invader|mosquito|medium bomber|light bomber/.test(t)) return "medium";
   if (/p-47|p-38|p-51|fighter-bomber|thunderbolt|typhoon|strafe|dive-bomb/.test(t)) return "fighter-bomber";
-  if (/division|regiment|battalion|infantry|armored|armoured|tank|captured|takes|cleared|attacks? toward|crosses|corps|panzer|troops|fighting|entered|truppen|volkssturm|artillery|shelling|beschuss|einmarsch|kämpfe/.test(t)) return "ground";
+  if (/division|regiment|battalion|infantry|armored|armoured|tank|captured|takes|cleared|attacks? toward|crosses|corps|panzer|troops|fighting|entered|truppen|volkssturm|artillery|shelling|beschuss|einmarsch|kämpfe|skirmish|firefight|patrol|sniper|counterattack|gefecht|scharmützel|feuergefecht|spähtrupp|beschossen|häuserkampf/.test(t)) return "ground";
   if (/bomb|raid|angriff|luftangriff|fliegeralarm|attack/.test(t)) return "medium";
   return "other"; }
 function guessTarget(t){ t=t.toLowerCase();
@@ -1597,8 +1612,8 @@ async function ruleExtract(id){
         const c=placeIdx.get(k); if(!c||seen.has(k)) continue; seen.add(k);
         const best=[...c].sort((a,b)=>b[3]-a[3])[0]; const unc=c.length>1&&best[3]<5000;
         const key=cur+"|"+best[0]+"|"+(pi+1); if(out.has(key)) break;
-        const cls=guessClass(line);
-        out.set(key,{date:cur,place:best[0],placeAsWritten:nm,lat:best[1],lon:best[2],locPrecision:unc?"uncertain":"town",summary:line.slice(0,320),quote:line.slice(0,220),page:pi+1,sourceId:id,missionClass:cls,targetType:cls==="ground"?"ground combat":guessTarget(line),role:"unknown",auto:true,method:"rule"});
+        const cls=guessClass(line), x=forceInfo(line);
+        out.set(key,{...x,date:cur,place:best[0],placeAsWritten:nm,lat:best[1],lon:best[2],locPrecision:unc?"uncertain":"town",summary:line.slice(0,320),quote:line.slice(0,220),page:pi+1,sourceId:id,missionClass:cls,targetType:cls==="ground"?"ground combat":guessTarget(line),role:"unknown",auto:true,method:"rule"});
         break;
       }
     }
@@ -1609,6 +1624,37 @@ async function ruleExtract(id){
   typeof log==="function" && log(`  ${items.length} events with a date and a place found.`);
   return items.length;
 }
+async function shareFindings(id){
+  if (KHM.isOwner || !KHM.configured || !$("#u-share")?.checked) return;
+  const src=S.sources[id]; const evs=S.events.filter(e=>e.sourceId===id&&e.lat!=null);
+  if (!src||!evs.length) return;
+  const keep=["date","place","placeAsWritten","lat","lon","locPrecision","missionClass","targetType","force","unit","army","aircraft","aircraftCount","summary","quote","page"];
+  const events=evs.slice(0,2000).map(e=>Object.fromEntries(keep.filter(k=>e[k]!=null&&e[k]!=="").map(k=>[k,typeof e[k]==="string"?e[k].slice(0,400):e[k]])));
+  try{ await KHM.contribute({doc_title:String(src.title).slice(0,300),events,snippets:events.map(e=>`${e.date} | ${e.place} | ${e.quote||e.summary||""}`).join("\n").slice(0,200000)}); log(`  ${events.length} findings shared with the map owner. Thank you!`); }
+  catch(e){ log("  findings could not be shared ("+(e.message||"error")+")"); }
+}
+async function searchTexts(q){
+  const box=$("#txtres"); q=q.trim(); if(q.length<3){ box.innerHTML=""; return; }
+  box.innerHTML=`<span class="hint">Searching…</span>`;
+  const snip=(t)=>{ const i=Math.max(0,norm(t).indexOf(norm(q))); const a=Math.max(0,i-120); return esc(t.slice(a,i))+"<mark>"+esc(t.slice(i,i+q.length))+"</mark>"+esc(t.slice(i+q.length,i+q.length+160)); };
+  let hits=[];
+  try{
+    if (KHM.isOwner) hits=(await KHM.searchTexts(q))||[];
+    else for (const [id,src] of Object.entries(S.sources)){ if(!canOpen(src.pagesAssetId)) continue; const pages=await loadPages(src).catch(()=>[]); pages.forEach((t,i)=>{ if(norm(t).includes(norm(q))&&hits.length<60) hits.push({source_id:id,page:i+1,title:src.title,body:t}); }); }
+  }catch(e){ box.innerHTML=`<span class="hint">Search failed: ${esc(e.message||"")}. If you are the owner, run the update-2 SQL in Supabase.</span>`; return; }
+  box.innerHTML = hits.length ? `<span class="hint">${hits.length}${hits.length>=60?"+":""} pages contain “${esc(q)}”</span>`+hits.map((h,i)=>`<div class="find"><b>${esc(h.title||S.sources[h.source_id]?.title||h.source_id)} · p. ${h.page}</b><span class="hint">${snip(h.body)}</span><button class="btn" data-th="${i}" style="width:max-content">Open page</button></div>`).join("") : `<span class="hint">No page contains “${esc(q)}”.${KHM.isOwner?"":" (Visitors search only their own documents.)"}</span>`;
+  box.querySelectorAll("[data-th]").forEach(b=>b.onclick=()=>{ const h=hits[+b.dataset.th]; openSource({_id:"txt",sourceId:h.source_id,page:h.page,date:"",place:h.title||"",summary:"Text archive search: "+q,quote:q,missionClass:"other",lat:null,lon:null}); });
+}
+async function renderContribs(){
+  const box=$("#contribs"); if(!box) return; if(!KHM.isOwner){ box.innerHTML=""; return; }
+  let list=[]; try{ list=await KHM.listContributions(); }catch{}
+  box.innerHTML = `<span class="lbl">Visitor contributions (${list.length})</span>` + (list.length ? list.map((c,i)=>`<div class="find"><b>${esc(c.doc_title)}</b><span class="hint">${new Date(c.created_at).toLocaleString("de-DE")} · ${c.events.length} findings</span><span class="hint" style="white-space:pre-wrap;max-height:120px;overflow:auto">${esc(c.events.slice(0,8).map(e=>`${e.date} · ${e.place}${e.force?" · "+e.force:""}${e.unit?" · "+e.unit:""} — ${e.quote||e.summary||""}`).join("\n"))}${c.events.length>8?"\n…":""}</span><div class="row"><button class="btn primary" data-ca="${i}">Add to my map</button><button class="btn" data-cd="${i}">Discard</button></div></div>`).join("") : `<span class="hint">None yet. When visitors add documents and agree to share, the dates, places and forces found arrive here for you to check.</span>`);
+  box.querySelectorAll("[data-ca]").forEach(b=>b.onclick=async()=>{ const c=list[+b.dataset.ca]; b.disabled=true; const sid="contrib-"+c.id.slice(0,8);
+    await S.db.doc("sources/"+sid).set({title:c.doc_title+" (visitor contribution)",author:"Visitor contribution",kind:"chronology",web:false,note:`Added from a visitor's document on ${new Date(c.created_at).toLocaleDateString("de-DE")}. Only the findings and short quotes were shared, not the file. Check before relying on it.`,createdAt:new Date().toISOString()});
+    await KHM.putMany("events", c.events.map((e,k)=>[`${sid}-${String(k).padStart(4,"0")}`,{...e,sourceId:sid,auto:true,method:"contribution",role:"unknown"}]));
+    await KHM.deleteContribution(c.id); renderContribs(); });
+  box.querySelectorAll("[data-cd]").forEach(b=>b.onclick=()=>confirmDlg("Discard this contribution?",async()=>{ await KHM.deleteContribution(list[+b.dataset.cd].id); renderContribs(); }));
+}
 async function importBundle(file){
   const st=$("#modebox"); st.insertAdjacentHTML("beforeend",`<span class="hint" id="bmsg">Reading the bundle…</span>`);
   try{
@@ -1617,6 +1663,7 @@ async function importBundle(file){
       const id=Object.keys(S.sources).find(k=>S.sources[k].sha256===sha) || v.sourceId; const src={...(S.sources[id]||{title:v.title,kind:"chronology",sha256:sha})}; delete src._id;
       const a=await S.assets.upload(new Blob([JSON.stringify({pages:v.pages})],{type:"application/json"}),{type:"application/json"});
       await S.db.doc("sources/"+id).set({...src,pagesAssetId:a.id,pageCount:v.pages.length,pageFrom:1,pageTo:v.pages.length,needsOcr:false,progress:src.progress||{next:1,lastDate:null,done:false}});
+      try{ await KHM.saveTexts(id, src.title||v.title, v.pages); }catch{}
       n++; $("#bmsg").textContent=`Imported page text for ${n} of ${Object.keys(b).length} documents…`;
     }
     $("#bmsg").textContent=`Page text imported for ${n} documents.`;
@@ -1634,7 +1681,9 @@ function renderAuth(){
   const mb=$("#modebox");
   mb.innerHTML = KHM.isOwner
     ? `<b>Owner mode</b><span>Documents you add are stored in your private Supabase storage; map points and sources are saved in your database and shown to visitors (files and page texts stay private).</span><label class="btn" style="width:max-content">Import page-text bundle (.json.gz)<input type="file" id="bundle" accept=".gz,.json.gz" hidden></label>`
-    : `<b>Visitor mode</b><span>Add your own chronologies, diaries or reports: they are read and mapped in your browser and stay only in this browser — nothing is uploaded or shared. ${KHM.localCount()?`You have ${KHM.localCount()} items stored here.`:""}</span>${KHM.localCount()?`<button class="btn" id="clearlocal" style="width:max-content">Delete my local data</button>`:""}`;
+    : `<b>Visitor mode</b><span>Add your own chronologies, diaries or reports: the files are read and mapped in your browser and stay only in this browser. If you agree when uploading, the dates, places and forces found (not the files) are sent to the map owner, who checks them before adding them to the public map. ${KHM.localCount()?`You have ${KHM.localCount()} items stored here.`:""}</span>${KHM.localCount()?`<button class="btn" id="clearlocal" style="width:max-content">Delete my local data</button>`:""}`;
+  renderContribs(); $("#u-share-l").hidden = KHM.isOwner || !KHM.configured;
+  let tq; $("#txtq").oninput=()=>{ clearTimeout(tq); tq=setTimeout(()=>searchTexts($("#txtq").value),400); };
   $("#bundle")&&($("#bundle").onchange=e=>e.target.files[0]&&importBundle(e.target.files[0]));
   $("#clearlocal")&&($("#clearlocal").onclick=()=>confirmDlg("Delete all documents and events you added in this browser?",()=>KHM.clearLocal()));
   $("#u-readnow-t").textContent = S.sample ? "Read the stored files with Claude right away (one after another; you can pause)" : "Find dates and places in the stored files right away (no AI, in your browser)";
@@ -2001,6 +2050,7 @@ async function storeFile(file, sha, kind, attachId){
     progress:{next:from,lastDate:null,done:false},createdAt:new Date().toISOString()};
   await S.db.doc("sources/"+id).set(doc);
   S.sources[id]={...doc,_id:id};
+  if (KHM.isOwner){ try{ await KHM.saveTexts(id, doc.title, pages); log("  text saved to the text archive."); }catch(e){ log("  text archive not updated (run update-2 SQL in Supabase): "+(e.message||e.code)); } }
   log(needsOcr ? "  stored. This is a scan without text: ask Claude in chat to run OCR before reading it." : `  stored (${pages.length} pages).`);
   return needsOcr ? null : id;
 }
@@ -2038,8 +2088,8 @@ $("#u-go").onclick=async()=>{
       if (id && kind!=="reference") toRead.push(id);
     }
     log(`${done} stored, ${skipped} skipped.`);
-    if ($("#u-readnow").checked && !S.sample) for (const id of toRead){ if (S.sources[id]?.kind==="chronology"){ log(`Finding dates and places in “${S.sources[id].title}”…`); await ruleExtract(id); } }
-    if ($("#u-readnow").checked && S.sample) for (const id of toRead){ if (extCtl?.signal.aborted) break; log(`Reading “${S.sources[id].title}”…`); await runExtraction(id); if (extCtl?.signal.aborted) break; }
+    if ($("#u-readnow").checked && !S.sample) for (const id of toRead){ if (S.sources[id]?.kind==="chronology"){ log(`Finding dates and places in “${S.sources[id].title}”…`); await ruleExtract(id); await shareFindings(id); } }
+    if ($("#u-readnow").checked && S.sample) for (const id of toRead){ if (extCtl?.signal.aborted) break; log(`Reading “${S.sources[id].title}”…`); await runExtraction(id); await shareFindings(id); if (extCtl?.signal.aborted) break; }
     else if (toRead.length && S.sample) log("Use “Read with Claude” in the Sources tab when you want map points from them.");
   }catch(e){ log("Stopped: "+(e?.message||e?.code||"unknown error")); }
   $("#u-go").disabled=false;

@@ -215,6 +215,25 @@
       }
       emitSoon(col);
     },
+    // ---- text archive (owner: Supabase table "texts"; visitors: their own stored page texts) ----
+    async saveTexts(sourceId, title, pages) {
+      if (!state.isOwner) return; // visitors' text is already kept in their browser with the document
+      const rows = pages.map((body, i) => ({ source_id: sourceId, page: i + 1, title, body: String(body || "").slice(0, 100000) })).filter(r => r.body.trim().length > 0);
+      for (let i = 0; i < rows.length; i += 200) { const { error } = await sb.from("texts").upsert(rows.slice(i, i + 200)); if (error) throw { code: "texts", message: error.message }; }
+    },
+    async searchTexts(q, limit = 60) {
+      if (!state.isOwner) return null;
+      const { data, error } = await sb.from("texts").select("source_id,page,title,body").ilike("body", "%" + q.replace(/[%_]/g, "") + "%").limit(limit);
+      if (error) throw error; return data;
+    },
+    // ---- visitor contributions ----
+    async contribute(row) {
+      if (!sb || state.isOwner) return false;
+      const { error } = await sb.from("contributions").insert(row);
+      if (error) throw error; return true;
+    },
+    async listContributions() { if (!state.isOwner) return []; const { data } = await sb.from("contributions").select("*").order("created_at", { ascending: false }).limit(200); return data || []; },
+    async deleteContribution(id) { if (!state.isOwner) return; await sb.from("contributions").delete().eq("id", id); },
     localCount: () => COLS.reduce((n, c) => n + state.local[c].size, 0),
     ready: () => state.ready
   };
