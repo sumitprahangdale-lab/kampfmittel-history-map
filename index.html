@@ -1,0 +1,2207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kampfmittel History Map</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* required styles */
+
+.leaflet-pane,
+.leaflet-tile,
+.leaflet-marker-icon,
+.leaflet-marker-shadow,
+.leaflet-tile-container,
+.leaflet-pane > svg,
+.leaflet-pane > canvas,
+.leaflet-zoom-box,
+.leaflet-image-layer,
+.leaflet-layer {
+	position: absolute;
+	left: 0;
+	top: 0;
+	}
+.leaflet-container {
+	overflow: hidden;
+	}
+.leaflet-tile,
+.leaflet-marker-icon,
+.leaflet-marker-shadow {
+	-webkit-user-select: none;
+	   -moz-user-select: none;
+	        user-select: none;
+	  -webkit-user-drag: none;
+	}
+/* Prevents IE11 from highlighting tiles in blue */
+.leaflet-tile::selection {
+	background: transparent;
+}
+/* Safari renders non-retina tile on retina better with this, but Chrome is worse */
+.leaflet-safari .leaflet-tile {
+	image-rendering: -webkit-optimize-contrast;
+	}
+/* hack that prevents hw layers "stretching" when loading new tiles */
+.leaflet-safari .leaflet-tile-container {
+	width: 1600px;
+	height: 1600px;
+	-webkit-transform-origin: 0 0;
+	}
+.leaflet-marker-icon,
+.leaflet-marker-shadow {
+	display: block;
+	}
+/* .leaflet-container svg: reset svg max-width decleration shipped in Joomla! (joomla.org) 3.x */
+/* .leaflet-container img: map is broken in FF if you have max-width: 100% on tiles */
+.leaflet-container .leaflet-overlay-pane svg {
+	max-width: none !important;
+	max-height: none !important;
+	}
+.leaflet-container .leaflet-marker-pane img,
+.leaflet-container .leaflet-shadow-pane img,
+.leaflet-container .leaflet-tile-pane img,
+.leaflet-container img.leaflet-image-layer,
+.leaflet-container .leaflet-tile {
+	max-width: none !important;
+	max-height: none !important;
+	width: auto;
+	padding: 0;
+	}
+
+.leaflet-container img.leaflet-tile {
+	/* See: https://bugs.chromium.org/p/chromium/issues/detail?id=600120 */
+	mix-blend-mode: plus-lighter;
+}
+
+.leaflet-container.leaflet-touch-zoom {
+	-ms-touch-action: pan-x pan-y;
+	touch-action: pan-x pan-y;
+	}
+.leaflet-container.leaflet-touch-drag {
+	-ms-touch-action: pinch-zoom;
+	/* Fallback for FF which doesn't support pinch-zoom */
+	touch-action: none;
+	touch-action: pinch-zoom;
+}
+.leaflet-container.leaflet-touch-drag.leaflet-touch-zoom {
+	-ms-touch-action: none;
+	touch-action: none;
+}
+.leaflet-container {
+	-webkit-tap-highlight-color: transparent;
+}
+.leaflet-container a {
+	-webkit-tap-highlight-color: rgba(51, 181, 229, 0.4);
+}
+.leaflet-tile {
+	filter: inherit;
+	visibility: hidden;
+	}
+.leaflet-tile-loaded {
+	visibility: inherit;
+	}
+.leaflet-zoom-box {
+	width: 0;
+	height: 0;
+	-moz-box-sizing: border-box;
+	     box-sizing: border-box;
+	z-index: 800;
+	}
+/* workaround for https://bugzilla.mozilla.org/show_bug.cgi?id=888319 */
+.leaflet-overlay-pane svg {
+	-moz-user-select: none;
+	}
+
+.leaflet-pane         { z-index: 400; }
+
+.leaflet-tile-pane    { z-index: 200; }
+.leaflet-overlay-pane { z-index: 400; }
+.leaflet-shadow-pane  { z-index: 500; }
+.leaflet-marker-pane  { z-index: 600; }
+.leaflet-tooltip-pane   { z-index: 650; }
+.leaflet-popup-pane   { z-index: 700; }
+
+.leaflet-map-pane canvas { z-index: 100; }
+.leaflet-map-pane svg    { z-index: 200; }
+
+.leaflet-vml-shape {
+	width: 1px;
+	height: 1px;
+	}
+.lvml {
+	behavior: url(#default#VML);
+	display: inline-block;
+	position: absolute;
+	}
+
+
+/* control positioning */
+
+.leaflet-control {
+	position: relative;
+	z-index: 800;
+	pointer-events: visiblePainted; /* IE 9-10 doesn't have auto */
+	pointer-events: auto;
+	}
+.leaflet-top,
+.leaflet-bottom {
+	position: absolute;
+	z-index: 1000;
+	pointer-events: none;
+	}
+.leaflet-top {
+	top: 0;
+	}
+.leaflet-right {
+	right: 0;
+	}
+.leaflet-bottom {
+	bottom: 0;
+	}
+.leaflet-left {
+	left: 0;
+	}
+.leaflet-control {
+	float: left;
+	clear: both;
+	}
+.leaflet-right .leaflet-control {
+	float: right;
+	}
+.leaflet-top .leaflet-control {
+	margin-top: 10px;
+	}
+.leaflet-bottom .leaflet-control {
+	margin-bottom: 10px;
+	}
+.leaflet-left .leaflet-control {
+	margin-left: 10px;
+	}
+.leaflet-right .leaflet-control {
+	margin-right: 10px;
+	}
+
+
+/* zoom and fade animations */
+
+.leaflet-fade-anim .leaflet-popup {
+	opacity: 0;
+	-webkit-transition: opacity 0.2s linear;
+	   -moz-transition: opacity 0.2s linear;
+	        transition: opacity 0.2s linear;
+	}
+.leaflet-fade-anim .leaflet-map-pane .leaflet-popup {
+	opacity: 1;
+	}
+.leaflet-zoom-animated {
+	-webkit-transform-origin: 0 0;
+	    -ms-transform-origin: 0 0;
+	        transform-origin: 0 0;
+	}
+svg.leaflet-zoom-animated {
+	will-change: transform;
+}
+
+.leaflet-zoom-anim .leaflet-zoom-animated {
+	-webkit-transition: -webkit-transform 0.25s cubic-bezier(0,0,0.25,1);
+	   -moz-transition:    -moz-transform 0.25s cubic-bezier(0,0,0.25,1);
+	        transition:         transform 0.25s cubic-bezier(0,0,0.25,1);
+	}
+.leaflet-zoom-anim .leaflet-tile,
+.leaflet-pan-anim .leaflet-tile {
+	-webkit-transition: none;
+	   -moz-transition: none;
+	        transition: none;
+	}
+
+.leaflet-zoom-anim .leaflet-zoom-hide {
+	visibility: hidden;
+	}
+
+
+/* cursors */
+
+.leaflet-interactive {
+	cursor: pointer;
+	}
+.leaflet-grab {
+	cursor: -webkit-grab;
+	cursor:    -moz-grab;
+	cursor:         grab;
+	}
+.leaflet-crosshair,
+.leaflet-crosshair .leaflet-interactive {
+	cursor: crosshair;
+	}
+.leaflet-popup-pane,
+.leaflet-control {
+	cursor: auto;
+	}
+.leaflet-dragging .leaflet-grab,
+.leaflet-dragging .leaflet-grab .leaflet-interactive,
+.leaflet-dragging .leaflet-marker-draggable {
+	cursor: move;
+	cursor: -webkit-grabbing;
+	cursor:    -moz-grabbing;
+	cursor:         grabbing;
+	}
+
+/* marker & overlays interactivity */
+.leaflet-marker-icon,
+.leaflet-marker-shadow,
+.leaflet-image-layer,
+.leaflet-pane > svg path,
+.leaflet-tile-container {
+	pointer-events: none;
+	}
+
+.leaflet-marker-icon.leaflet-interactive,
+.leaflet-image-layer.leaflet-interactive,
+.leaflet-pane > svg path.leaflet-interactive,
+svg.leaflet-image-layer.leaflet-interactive path {
+	pointer-events: visiblePainted; /* IE 9-10 doesn't have auto */
+	pointer-events: auto;
+	}
+
+/* visual tweaks */
+
+.leaflet-container {
+	background: #ddd;
+	outline-offset: 1px;
+	}
+.leaflet-container a {
+	color: #0078A8;
+	}
+.leaflet-zoom-box {
+	border: 2px dotted #38f;
+	background: rgba(255,255,255,0.5);
+	}
+
+
+/* general typography */
+.leaflet-container {
+	font-family: "Helvetica Neue", Arial, Helvetica, sans-serif;
+	font-size: 12px;
+	font-size: 0.75rem;
+	line-height: 1.5;
+	}
+
+
+/* general toolbar styles */
+
+.leaflet-bar {
+	box-shadow: 0 1px 5px rgba(0,0,0,0.65);
+	border-radius: 4px;
+	}
+.leaflet-bar a {
+	background-color: #fff;
+	border-bottom: 1px solid #ccc;
+	width: 26px;
+	height: 26px;
+	line-height: 26px;
+	display: block;
+	text-align: center;
+	text-decoration: none;
+	color: black;
+	}
+.leaflet-bar a,
+.leaflet-control-layers-toggle {
+	background-position: 50% 50%;
+	background-repeat: no-repeat;
+	display: block;
+	}
+.leaflet-bar a:hover,
+.leaflet-bar a:focus {
+	background-color: #f4f4f4;
+	}
+.leaflet-bar a:first-child {
+	border-top-left-radius: 4px;
+	border-top-right-radius: 4px;
+	}
+.leaflet-bar a:last-child {
+	border-bottom-left-radius: 4px;
+	border-bottom-right-radius: 4px;
+	border-bottom: none;
+	}
+.leaflet-bar a.leaflet-disabled {
+	cursor: default;
+	background-color: #f4f4f4;
+	color: #bbb;
+	}
+
+.leaflet-touch .leaflet-bar a {
+	width: 30px;
+	height: 30px;
+	line-height: 30px;
+	}
+.leaflet-touch .leaflet-bar a:first-child {
+	border-top-left-radius: 2px;
+	border-top-right-radius: 2px;
+	}
+.leaflet-touch .leaflet-bar a:last-child {
+	border-bottom-left-radius: 2px;
+	border-bottom-right-radius: 2px;
+	}
+
+/* zoom control */
+
+.leaflet-control-zoom-in,
+.leaflet-control-zoom-out {
+	font: bold 18px 'Lucida Console', Monaco, monospace;
+	text-indent: 1px;
+	}
+
+.leaflet-touch .leaflet-control-zoom-in, .leaflet-touch .leaflet-control-zoom-out  {
+	font-size: 22px;
+	}
+
+
+/* layers control */
+
+.leaflet-control-layers {
+	box-shadow: 0 1px 5px rgba(0,0,0,0.4);
+	background: #fff;
+	border-radius: 5px;
+	}
+.leaflet-control-layers-toggle {
+	background-image: url(images/layers.png);
+	width: 36px;
+	height: 36px;
+	}
+.leaflet-retina .leaflet-control-layers-toggle {
+	background-image: url(images/layers-2x.png);
+	background-size: 26px 26px;
+	}
+.leaflet-touch .leaflet-control-layers-toggle {
+	width: 44px;
+	height: 44px;
+	}
+.leaflet-control-layers .leaflet-control-layers-list,
+.leaflet-control-layers-expanded .leaflet-control-layers-toggle {
+	display: none;
+	}
+.leaflet-control-layers-expanded .leaflet-control-layers-list {
+	display: block;
+	position: relative;
+	}
+.leaflet-control-layers-expanded {
+	padding: 6px 10px 6px 6px;
+	color: #333;
+	background: #fff;
+	}
+.leaflet-control-layers-scrollbar {
+	overflow-y: scroll;
+	overflow-x: hidden;
+	padding-right: 5px;
+	}
+.leaflet-control-layers-selector {
+	margin-top: 2px;
+	position: relative;
+	top: 1px;
+	}
+.leaflet-control-layers label {
+	display: block;
+	font-size: 13px;
+	font-size: 1.08333em;
+	}
+.leaflet-control-layers-separator {
+	height: 0;
+	border-top: 1px solid #ddd;
+	margin: 5px -10px 5px -6px;
+	}
+
+/* Default icon URLs */
+.leaflet-default-icon-path { /* used only in path-guessing heuristic, see L.Icon.Default */
+	background-image: url(images/marker-icon.png);
+	}
+
+
+/* attribution and scale controls */
+
+.leaflet-container .leaflet-control-attribution {
+	background: #fff;
+	background: rgba(255, 255, 255, 0.8);
+	margin: 0;
+	}
+.leaflet-control-attribution,
+.leaflet-control-scale-line {
+	padding: 0 5px;
+	color: #333;
+	line-height: 1.4;
+	}
+.leaflet-control-attribution a {
+	text-decoration: none;
+	}
+.leaflet-control-attribution a:hover,
+.leaflet-control-attribution a:focus {
+	text-decoration: underline;
+	}
+.leaflet-attribution-flag {
+	display: inline !important;
+	vertical-align: baseline !important;
+	width: 1em;
+	height: 0.6669em;
+	}
+.leaflet-left .leaflet-control-scale {
+	margin-left: 5px;
+	}
+.leaflet-bottom .leaflet-control-scale {
+	margin-bottom: 5px;
+	}
+.leaflet-control-scale-line {
+	border: 2px solid #777;
+	border-top: none;
+	line-height: 1.1;
+	padding: 2px 5px 1px;
+	white-space: nowrap;
+	-moz-box-sizing: border-box;
+	     box-sizing: border-box;
+	background: rgba(255, 255, 255, 0.8);
+	text-shadow: 1px 1px #fff;
+	}
+.leaflet-control-scale-line:not(:first-child) {
+	border-top: 2px solid #777;
+	border-bottom: none;
+	margin-top: -2px;
+	}
+.leaflet-control-scale-line:not(:first-child):not(:last-child) {
+	border-bottom: 2px solid #777;
+	}
+
+.leaflet-touch .leaflet-control-attribution,
+.leaflet-touch .leaflet-control-layers,
+.leaflet-touch .leaflet-bar {
+	box-shadow: none;
+	}
+.leaflet-touch .leaflet-control-layers,
+.leaflet-touch .leaflet-bar {
+	border: 2px solid rgba(0,0,0,0.2);
+	background-clip: padding-box;
+	}
+
+
+/* popup */
+
+.leaflet-popup {
+	position: absolute;
+	text-align: center;
+	margin-bottom: 20px;
+	}
+.leaflet-popup-content-wrapper {
+	padding: 1px;
+	text-align: left;
+	border-radius: 12px;
+	}
+.leaflet-popup-content {
+	margin: 13px 24px 13px 20px;
+	line-height: 1.3;
+	font-size: 13px;
+	font-size: 1.08333em;
+	min-height: 1px;
+	}
+.leaflet-popup-content p {
+	margin: 17px 0;
+	margin: 1.3em 0;
+	}
+.leaflet-popup-tip-container {
+	width: 40px;
+	height: 20px;
+	position: absolute;
+	left: 50%;
+	margin-top: -1px;
+	margin-left: -20px;
+	overflow: hidden;
+	pointer-events: none;
+	}
+.leaflet-popup-tip {
+	width: 17px;
+	height: 17px;
+	padding: 1px;
+
+	margin: -10px auto 0;
+	pointer-events: auto;
+
+	-webkit-transform: rotate(45deg);
+	   -moz-transform: rotate(45deg);
+	    -ms-transform: rotate(45deg);
+	        transform: rotate(45deg);
+	}
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+	background: white;
+	color: #333;
+	box-shadow: 0 3px 14px rgba(0,0,0,0.4);
+	}
+.leaflet-container a.leaflet-popup-close-button {
+	position: absolute;
+	top: 0;
+	right: 0;
+	border: none;
+	text-align: center;
+	width: 24px;
+	height: 24px;
+	font: 16px/24px Tahoma, Verdana, sans-serif;
+	color: #757575;
+	text-decoration: none;
+	background: transparent;
+	}
+.leaflet-container a.leaflet-popup-close-button:hover,
+.leaflet-container a.leaflet-popup-close-button:focus {
+	color: #585858;
+	}
+.leaflet-popup-scrolled {
+	overflow: auto;
+	}
+
+.leaflet-oldie .leaflet-popup-content-wrapper {
+	-ms-zoom: 1;
+	}
+.leaflet-oldie .leaflet-popup-tip {
+	width: 24px;
+	margin: 0 auto;
+
+	-ms-filter: "progid:DXImageTransform.Microsoft.Matrix(M11=0.70710678, M12=0.70710678, M21=-0.70710678, M22=0.70710678)";
+	filter: progid:DXImageTransform.Microsoft.Matrix(M11=0.70710678, M12=0.70710678, M21=-0.70710678, M22=0.70710678);
+	}
+
+.leaflet-oldie .leaflet-control-zoom,
+.leaflet-oldie .leaflet-control-layers,
+.leaflet-oldie .leaflet-popup-content-wrapper,
+.leaflet-oldie .leaflet-popup-tip {
+	border: 1px solid #999;
+	}
+
+
+/* div icon */
+
+.leaflet-div-icon {
+	background: #fff;
+	border: 1px solid #666;
+	}
+
+
+/* Tooltip */
+/* Base styles for the element that has a tooltip */
+.leaflet-tooltip {
+	position: absolute;
+	padding: 6px;
+	background-color: #fff;
+	border: 1px solid #fff;
+	border-radius: 3px;
+	color: #222;
+	white-space: nowrap;
+	-webkit-user-select: none;
+	-moz-user-select: none;
+	-ms-user-select: none;
+	user-select: none;
+	pointer-events: none;
+	box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+	}
+.leaflet-tooltip.leaflet-interactive {
+	cursor: pointer;
+	pointer-events: auto;
+	}
+.leaflet-tooltip-top:before,
+.leaflet-tooltip-bottom:before,
+.leaflet-tooltip-left:before,
+.leaflet-tooltip-right:before {
+	position: absolute;
+	pointer-events: none;
+	border: 6px solid transparent;
+	background: transparent;
+	content: "";
+	}
+
+/* Directions */
+
+.leaflet-tooltip-bottom {
+	margin-top: 6px;
+}
+.leaflet-tooltip-top {
+	margin-top: -6px;
+}
+.leaflet-tooltip-bottom:before,
+.leaflet-tooltip-top:before {
+	left: 50%;
+	margin-left: -6px;
+	}
+.leaflet-tooltip-top:before {
+	bottom: 0;
+	margin-bottom: -12px;
+	border-top-color: #fff;
+	}
+.leaflet-tooltip-bottom:before {
+	top: 0;
+	margin-top: -12px;
+	margin-left: -6px;
+	border-bottom-color: #fff;
+	}
+.leaflet-tooltip-left {
+	margin-left: -6px;
+}
+.leaflet-tooltip-right {
+	margin-left: 6px;
+}
+.leaflet-tooltip-left:before,
+.leaflet-tooltip-right:before {
+	top: 50%;
+	margin-top: -6px;
+	}
+.leaflet-tooltip-left:before {
+	right: 0;
+	margin-right: -12px;
+	border-left-color: #fff;
+	}
+.leaflet-tooltip-right:before {
+	left: 0;
+	margin-left: -12px;
+	border-right-color: #fff;
+	}
+
+/* Printing */
+
+@media print {
+	/* Prevent printers from removing background-images of controls. */
+	.leaflet-control {
+		-webkit-print-color-adjust: exact;
+		print-color-adjust: exact;
+		}
+	}
+
+</style>
+<style>
+/* Layout: header strip, then three columns — controls | map | three-part report. Stacks on phones. */
+:root{
+  --bg:#e9ece8; --panel:#f7f8f5; --ink:#1c2220; --muted:#5b6560; --line:#cdd3ce; --accent:#b42318; --sel:#0e6f7c;
+  --land:#e3e6de; --sea:#c4d3d9; --water:#93b1bf; --rail:#3f4542; --road:#cbc4b2; --urban:#d5d0c3; --border:#7f8882; --kreis:#bfc6c0;
+  --c-heavy:#b42318; --c-medium:#c46a05; --c-fb:#6d3fc0; --c-fighter:#5b6b7c; --c-move:#0f766e; --c-ground:#4d7c0f; --c-other:#6b7280;
+  --ok:#2f7d32; --warn:#b26a00; --crit:#b42318;
+  --f-display:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
+  --f-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#121618; --panel:#191e21; --ink:#e4e8e5; --muted:#99a39e; --line:#2d3539; --accent:#f06543; --sel:#3cb6c4;
+    --land:#1f2528; --sea:#0f1417; --water:#2a4653; --rail:#8d9792; --road:#3a3e3b; --urban:#2b3031; --border:#5f6965; --kreis:#2f3739;
+    --c-heavy:#f06543; --c-medium:#f0a33a; --c-fb:#a888f0; --c-fighter:#9aaabb; --c-move:#3cc4b4; --c-ground:#9ccc3c; --c-other:#9ca3af;
+    --ok:#6cc070; --warn:#f0b13a; --crit:#f06543; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#121618; --panel:#191e21; --ink:#e4e8e5; --muted:#99a39e; --line:#2d3539; --accent:#f06543; --sel:#3cb6c4;
+  --land:#1f2528; --sea:#0f1417; --water:#2a4653; --rail:#8d9792; --road:#3a3e3b; --urban:#2b3031; --border:#5f6965; --kreis:#2f3739;
+  --c-heavy:#f06543; --c-medium:#f0a33a; --c-fb:#a888f0; --c-fighter:#9aaabb; --c-move:#3cc4b4; --c-ground:#9ccc3c; --c-other:#9ca3af;
+  --ok:#6cc070; --warn:#f0b13a; --crit:#f06543; color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font:14px/1.45 var(--f-body);display:flex;flex-direction:column}
+button,input,select,textarea{font:inherit;color:inherit}
+h1,h2,h3{font-family:var(--f-display);font-weight:600;letter-spacing:.02em;margin:0;text-wrap:balance}
+.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+header.top{display:flex;align-items:center;gap:16px;padding:10px 16px;border-bottom:1px solid var(--line);background:var(--panel);flex-wrap:wrap}
+header.top h1{font-size:22px;text-transform:uppercase}
+header.top .sub{color:var(--muted);font-size:13px}
+header.top .status{margin-left:auto;font-size:12px;color:var(--muted)}
+.app{flex:1;min-height:0;display:grid;grid-template-columns:300px 1fr 440px}
+@media (max-width:1100px){.app{grid-template-columns:280px 1fr;grid-template-rows:1fr auto}.report{grid-column:1 / -1;max-height:none;border-left:0;border-top:1px solid var(--line)}}
+@media (max-width:720px){.app{display:flex;flex-direction:column;overflow:auto}#mapwrap{height:60vh;flex:none}.side,.report{overflow:visible;max-height:none}}
+.side{background:var(--panel);border-right:1px solid var(--line);overflow:auto;display:flex;flex-direction:column}
+.tabs{display:flex;border-bottom:1px solid var(--line)}
+.tabs button{flex:1;padding:9px 6px;background:none;border:0;border-bottom:2px solid transparent;cursor:pointer;font-family:var(--f-display);font-size:15px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
+.pane{padding:14px;display:flex;flex-direction:column;gap:14px}
+.pane[hidden]{display:none}
+.group{display:flex;flex-direction:column;gap:8px}
+.group > label,.lbl{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+input[type=text],input[type=url],input[type=number],input[type=date],select,textarea{background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:6px 8px;min-width:0}
+input:focus-visible,select:focus-visible,button:focus-visible,textarea:focus-visible,a:focus-visible{outline:2px solid var(--sel);outline-offset:1px}
+.btn{border:1px solid var(--line);background:var(--bg);padding:6px 10px;border-radius:4px;cursor:pointer;white-space:nowrap}
+.btn:hover{border-color:var(--ink)}
+a.btn{text-decoration:none;color:inherit;display:inline-flex;align-items:center}
+a.btn.primary{color:var(--panel)}
+.btn.primary{background:var(--ink);color:var(--panel);border-color:var(--ink)}
+.btn.on{border-color:var(--sel);box-shadow:inset 0 0 0 1px var(--sel);color:var(--sel)}
+.btn:disabled{opacity:.5;cursor:default}
+.seg{display:flex}
+.seg .btn{border-radius:0}.seg .btn:first-child{border-radius:4px 0 0 4px}.seg .btn:last-child{border-radius:0 4px 4px 0}.seg .btn+.btn{margin-left:-1px}
+.hint{font-size:12px;color:var(--muted)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chk{display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer}
+.dot{width:10px;height:10px;border-radius:50%;display:inline-block;flex:none}
+#mapwrap{position:relative;min-height:300px}
+#map{position:absolute;inset:0;background:var(--sea)}
+.leaflet-container{font-family:var(--f-body);background:var(--sea)}
+.gicon{background:none;border:0}.gicon svg{display:block;filter:drop-shadow(0 0 1px rgba(0,0,0,.5))}.maplegend details>summary{cursor:pointer}.lgbody{display:flex;flex-direction:column;gap:3px;margin-top:4px;max-width:330px}.tlyears{flex-wrap:wrap;gap:4px;margin-bottom:4px}.tlyears .btn{padding:2px 7px;font-size:12px}.tlyears .btn.on{background:var(--ink);color:var(--panel)}
+.armies{display:grid;grid-template-columns:1fr 1fr;gap:1px 8px}
+.tlwrap{border:1px solid var(--line);border-radius:6px;padding:8px 10px;margin:0 0 12px;display:flex;flex-direction:column;gap:6px;background:var(--bg)}
+#tl svg{display:block;width:100%;overflow:visible}.tlax{stroke:var(--ink);stroke-width:1.5}.tltk{stroke:var(--muted)}.tltx{font:10px var(--f-body);fill:var(--muted)}.tltx.yr{font-weight:700;fill:var(--ink)}
+.tlm{cursor:pointer}.tlm circle,.tlm path{stroke:var(--panel);stroke-width:1;opacity:.9}.tlm:hover circle,.tlm:hover path,.tlm.on circle,.tlm.on path{stroke:var(--ink);stroke-width:2;opacity:1}
+#minimap{height:230px;border-radius:4px;border:1px solid var(--line);background:var(--sea)}#mmslot:empty{display:none}
+.mmnum span{display:inline-block;min-width:16px;padding:0 3px;border-radius:8px;color:#fff;font:600 10px/16px var(--f-body);text-align:center;border:1px solid #fff;transform:translate(-50%,-50%)}
+.authbox{display:flex;gap:6px;align-items:center;margin-left:8px}.chip{padding:2px 8px;font-size:12px}.chip.on{background:var(--ink);color:var(--panel)}.yearchips{flex-wrap:wrap;gap:4px}
+.chat{margin:12px 16px 0;padding:10px;border:1px solid var(--line);border-radius:6px;display:flex;flex-direction:column;gap:6px;background:var(--bg)}
+#chatlog{display:flex;flex-direction:column;gap:6px;max-height:320px;overflow:auto}.cmsg{padding:6px 9px;border-radius:6px;white-space:pre-wrap;font-size:13px}.cmsg.user{align-self:flex-end;background:var(--ink);color:var(--panel);max-width:85%}.cmsg.ai{background:var(--panel);border:1px solid var(--line)}
+.maplegend{position:absolute;left:10px;bottom:10px;z-index:500;background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:8px 10px;font-size:12px;display:flex;flex-direction:column;gap:3px}
+.mapmode{position:absolute;left:50%;top:10px;transform:translateX(-50%);z-index:500;background:var(--ink);color:var(--panel);padding:5px 12px;border-radius:14px;font-size:12px;pointer-events:none}
+.mapmode[hidden]{display:none}
+.lbl-place{font-size:11px;color:var(--muted);white-space:nowrap;text-shadow:0 0 3px var(--land),0 0 3px var(--land);font-weight:500;pointer-events:none}
+.lbl-place.big{font-size:12.5px;color:var(--ink)}
+.leaflet-popup-content-wrapper,.leaflet-popup-tip{background:var(--panel);color:var(--ink);border-radius:6px}
+.leaflet-popup-content{margin:12px 14px;max-height:320px;overflow:auto;width:300px!important}
+.leaflet-bar a{background:var(--panel);color:var(--ink);border-color:var(--line)}
+.pop h3{font-size:17px;margin-bottom:6px}
+.pop .ev{border-top:1px solid var(--line);padding:6px 0;display:flex;flex-direction:column;gap:2px}
+.report{background:var(--panel);border-left:1px solid var(--line);overflow:auto}
+.report .head{padding:14px 16px 10px;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:6px;position:sticky;top:0;background:var(--panel);z-index:2}
+.report .head h2{font-size:22px}
+.report .head .meta{font-size:12px;color:var(--muted)}
+.sec{padding:14px 16px;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:10px}
+.sec > h3{font-size:17px;display:flex;align-items:baseline;gap:8px;text-transform:uppercase}
+.sec > h3 .n{font-family:var(--f-mono);font-size:12px;color:var(--panel);background:var(--ink);border-radius:3px;padding:1px 6px}
+.sec > h3 .de{font-family:var(--f-body);text-transform:none;font-weight:400;font-size:12px;color:var(--muted);letter-spacing:0}
+.tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.tile{border:1px solid var(--line);border-radius:4px;padding:8px}
+.tile .v{font-family:var(--f-mono);font-size:19px;font-variant-numeric:tabular-nums}
+.tile .k{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.evrow{display:grid;grid-template-columns:76px 1fr;gap:4px 10px;padding:8px 0;border-top:1px solid var(--line)}
+.evrow:first-of-type{border-top:0}
+.evrow .d{font-family:var(--f-mono);font-size:12px;color:var(--muted);padding-top:2px}
+.evrow .t{display:flex;flex-direction:column;gap:3px}
+.evrow .p{font-weight:600}
+.evrow .s{font-size:13px}
+.evrow.flash{background:color-mix(in srgb,var(--sel) 14%,transparent)}
+.pill{display:inline-flex;align-items:center;gap:4px;font-size:11px;padding:1px 7px;border-radius:10px;border:1px solid currentColor;white-space:nowrap;line-height:1.5}
+.pill.solid{color:var(--panel)!important;border:0}
+.meta-line{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:12px;color:var(--muted)}
+.src{display:inline-flex;align-items:center;gap:4px;font-size:11.5px;padding:1px 7px;border-radius:3px;background:color-mix(in srgb,var(--sel) 12%,transparent);color:var(--sel);border:0;cursor:pointer;font-family:var(--f-mono)}
+.src:hover{background:color-mix(in srgb,var(--sel) 22%,transparent)}
+table.ord{width:100%;border-collapse:collapse;font-size:13px}
+table.ord th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:500;padding:4px 6px;border-bottom:1px solid var(--line)}
+table.ord td{padding:6px;border-bottom:1px solid var(--line);vertical-align:top}
+table.ord tr.det td{background:var(--bg);font-size:12.5px}
+table.ord tr.main{cursor:pointer}
+table.ord tr.main:hover td{background:color-mix(in srgb,var(--ink) 4%,transparent)}
+.lik-typical{color:var(--accent)}.lik-possible{color:var(--warn)}.lik-rare{color:var(--muted)}
+.risk{display:flex;align-items:center;gap:10px;padding:10px;border-radius:4px;border-left:4px solid var(--muted);background:var(--bg)}
+.risk.high{border-color:var(--crit)}.risk.medium{border-color:var(--warn)}.risk.low{border-color:var(--ok)}
+.risk .lvl{font-family:var(--f-display);font-size:20px;text-transform:uppercase}
+.find{padding:8px 10px;border:1px solid var(--line);border-radius:4px;display:flex;flex-direction:column;gap:3px}
+.find b{font-weight:600}
+ul.steps{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:3px;font-size:13px}
+.narr{white-space:pre-wrap;font-size:13.5px;line-height:1.55;border:1px solid var(--line);border-radius:4px;padding:10px;background:var(--bg)}
+.narr .cite{color:var(--sel);cursor:pointer;font-family:var(--f-mono);font-size:12px}
+.disc{font-size:11.5px;color:var(--muted);border-top:1px dashed var(--line);padding-top:8px}
+.srcitem{border:1px solid var(--line);border-radius:4px;padding:10px;display:flex;flex-direction:column;gap:6px}
+.srcitem .tt{font-weight:600}
+.srcitem,.find{overflow-wrap:anywhere}
+.bar{height:6px;background:var(--bg);border-radius:3px;overflow:hidden;border:1px solid var(--line)}
+.bar > i{display:block;height:100%;background:var(--sel)}
+.ordcard{border-top:1px solid var(--line);padding:8px 0;display:flex;flex-direction:column;gap:3px;font-size:13px}
+.empty{color:var(--muted);font-size:13px;padding:6px 0}
+/* dialogs */
+.modal{position:fixed;inset:0;z-index:2000;background:color-mix(in srgb,#000 45%,transparent);display:flex;align-items:center;justify-content:center;padding:16px}
+.modal[hidden]{display:none}
+.dlg{background:var(--panel);border:1px solid var(--line);border-radius:6px;width:min(760px,100%);max-height:90vh;display:flex;flex-direction:column}
+.dlg .dh{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--line)}
+.dlg .dh h2{font-size:20px}
+.dlg .dh .x{margin-left:auto}
+.dlg .db{padding:14px 16px;overflow:auto;display:flex;flex-direction:column;gap:12px}
+.dlg .df{padding:10px 16px;border-top:1px solid var(--line);display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+.pagetext{white-space:pre-wrap;font-family:var(--f-mono);font-size:12.5px;line-height:1.55;background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:12px;max-height:55vh;overflow:auto}
+mark{background:color-mix(in srgb,var(--warn) 40%,transparent);color:inherit;padding:0 1px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media (max-width:560px){.grid2{grid-template-columns:1fr}.tiles{grid-template-columns:1fr 1fr}}
+.log{font-family:var(--f-mono);font-size:11.5px;max-height:140px;overflow:auto;background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:8px;white-space:pre-wrap}
+.sugg{border:1px solid var(--line);border-radius:4px;background:var(--panel);max-height:220px;overflow:auto}
+.sugg button{display:flex;justify-content:space-between;width:100%;text-align:left;border:0;background:none;padding:6px 8px;cursor:pointer;gap:8px}
+.sugg button:hover,.sugg button:focus-visible{background:var(--bg)}
+.sugg small{color:var(--muted)}
+@media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<header class="top">
+  <h1>Kampfmittel History Map</h1>
+  <span class="sub">Historical sources → events on the map → historisch-genetische Rekonstruktion for any area</span>
+  <span class="status" id="status">Loading…</span>
+  <span class="authbox" id="authbox"></span>
+</header>
+<div class="app">
+  <aside class="side">
+    <div class="tabs" role="tablist">
+      <button role="tab" id="t-area" aria-selected="true" data-pane="p-area">Area</button>
+      <button role="tab" id="t-src" aria-selected="false" data-pane="p-src">Sources</button>
+      <button role="tab" id="t-dict" aria-selected="false" data-pane="p-dict">Ordnance</button>
+    </div>
+    <div class="pane" id="p-area">
+      <div class="group">
+        <label for="q">Find a place</label>
+        <input type="text" id="q" placeholder="Address, town, village, district or state" autocomplete="off">
+        <div class="sugg" id="sugg" hidden></div>
+        <div class="row"><button class="btn" id="locate" hidden>Search address ⏎</button><span class="hint" id="qhint"></span></div>
+      </div>
+      <div class="group">
+        <span class="lbl">Select area</span>
+        <div class="seg" role="group" aria-label="Selection mode">
+          <button class="btn" id="m-radius">Radius</button>
+          <button class="btn" id="m-region">Region</button>
+          <button class="btn" id="m-view">Map view</button>
+        </div>
+        <div id="radiusCtl" class="group">
+          <div class="row"><label for="rad" class="hint">Radius</label><input type="range" id="rad" min="1" max="60" value="20" style="flex:1"><span class="mono" id="radv">20 km</span></div>
+          <span class="hint">Click the map to move the centre.</span>
+        </div>
+        <div id="regionCtl" class="group" hidden>
+          <div class="seg" role="group" aria-label="Region level">
+            <button class="btn" data-lv="country">Country</button>
+            <button class="btn on" data-lv="state">State</button>
+            <button class="btn" data-lv="district">District</button>
+          </div>
+          <span class="hint">Click a region on the map. Districts are available for Germany.</span>
+        </div>
+      </div>
+      <div class="group">
+        <span class="lbl">Period</span>
+        <div class="row"><input type="date" id="from" value="1939-09-01" aria-label="From"><span class="hint">to</span><input type="date" id="to" value="1945-12-31" aria-label="To"></div>
+      </div>
+      <div class="group" id="sitctl">
+        <span class="lbl">Front lines · 12th Army Group situation maps</span>
+        <label class="chk"><input type="checkbox" id="sit-on">Show the front line of the selected day</label>
+        <div class="row"><button class="btn" id="sit-prev" aria-label="Previous map">‹</button><input type="range" id="sit-i" min="0" max="97" value="0" style="flex:1" aria-label="Situation map date"><button class="btn" id="sit-next" aria-label="Next map">›</button></div>
+        <div class="row" style="justify-content:space-between"><span class="mono" id="sit-date">—</span><label class="chk"><input type="checkbox" id="sit-scan">Scan underneath</label></div>
+        <span class="hint" id="sit-sheet"></span>
+      </div>
+      <div class="group">
+        <span class="lbl">Event types</span>
+        <div class="group" id="classes"></div>
+      </div>
+      <div class="group">
+        <span class="lbl">Filters</span>
+        <div class="row yearchips" id="yearchips"></div>
+        <input type="text" id="f-q" placeholder="Search events: place, unit, words…" aria-label="Search events">
+        <div class="row"><select id="f-target" aria-label="Target type" style="flex:1"><option value="">All target types</option></select></div>
+        <div class="row"><select id="f-army" aria-label="Army" style="flex:1"><option value="">All armies (ground fighting)</option></select></div>
+        <div class="row"><label class="hint" for="f-tons">Min. bombs</label><input type="number" id="f-tons" min="0" step="10" value="0" style="width:84px"><span class="hint">t recorded</span></div>
+        <label class="chk"><input type="checkbox" id="f-unc">Hide uncertain locations</label>
+        <label class="chk"><input type="checkbox" id="f-mapyear" checked>Map follows the timeline year</label>
+        <div class="row"><button class="btn" id="f-reset">Reset filters</button><span class="hint" id="f-count"></span></div>
+      </div>
+      <div class="group">
+        <span class="lbl">Show events from</span>
+        <div class="group" id="srcfilter"></div>
+      </div>
+      <div class="group">
+        <span class="lbl">Map layers</span>
+        <div class="group" id="layers"></div>
+      </div>
+    </div>
+    <div class="pane" id="p-src" hidden>
+      <div class="row"><button class="btn primary" id="addsrc">Add documents</button><span class="hint" id="srchint"></span></div>
+      <div class="find" id="modebox"></div>
+      <div class="group" id="srclist"></div>
+    </div>
+    <div class="pane" id="p-dict" hidden>
+      <span class="hint">Every bomb, fuze or round the report can match. Entries come from the ordnance sources you add; each lists which aircraft classes carried it and which target types it was used on.</span>
+      <input type="text" id="dq" placeholder="Filter, e.g. AN-M64, incendiary, fuze" aria-label="Filter ordnance">
+      <div id="dictlist"></div>
+    </div>
+  </aside>
+  <main id="mapwrap">
+    <div id="map" aria-label="Map"></div>
+    <div class="mapmode" id="mapmode" hidden></div>
+    <div class="maplegend" id="legend"></div>
+  </main>
+  <section class="report" id="report" aria-live="polite"></section>
+</div>
+
+<div class="modal" id="m-login" hidden>
+  <div class="dlg" role="dialog" aria-modal="true" aria-labelledby="ml-title" style="max-width:380px">
+    <div class="dh"><h2 id="ml-title">Owner sign-in</h2><button class="btn x" data-close>Close</button></div>
+    <div class="db"><span class="hint">Only the owner of this map can sign in. Visitors don't need an account: documents they add stay in their own browser.</span>
+      <div class="group"><label for="li-email">E-mail</label><input type="text" id="li-email" autocomplete="username"></div>
+      <div class="group"><label for="li-pw">Password</label><input type="password" id="li-pw" autocomplete="current-password" style="background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:6px 8px"></div>
+      <span class="hint" id="li-msg"></span></div>
+    <div class="df"><button class="btn primary" id="li-go">Sign in</button></div>
+  </div>
+</div>
+<div class="modal" id="m-source" hidden>
+  <div class="dlg" role="dialog" aria-modal="true" aria-labelledby="ms-title">
+    <div class="dh"><h2 id="ms-title">Source</h2><button class="btn x" data-close>Close</button></div>
+    <div class="db" id="ms-body"></div>
+    <div class="df" id="ms-foot"></div>
+  </div>
+</div>
+<div class="modal" id="m-upload" hidden>
+  <div class="dlg" role="dialog" aria-modal="true" aria-labelledby="mu-title">
+    <div class="dh"><h2 id="mu-title">Add documents</h2><button class="btn x" data-close>Close</button></div>
+    <div class="db">
+      <div id="u-pick" class="group">
+        <span class="lbl">Files</span>
+        <div class="row">
+          <label class="btn" for="u-file">Choose files…</label><input type="file" id="u-file" multiple accept=".pdf,.txt,.md,application/pdf,text/plain,text/markdown" hidden>
+          <label class="btn" for="u-folder">Choose a folder…</label><input type="file" id="u-folder" webkitdirectory multiple hidden>
+          <span class="hint" id="u-count">PDF (text or scan), .txt or .md. Each file is checked against what is already stored.</span>
+        </div>
+        <div id="u-queue" class="group" style="gap:4px"></div>
+      </div>
+      <div class="grid2">
+        <div class="group"><label for="u-kind">What are they?</label>
+          <select id="u-kind">
+            <option value="auto">Decide per file from the file name</option>
+            <option value="chronology">Chronologies and reports with dated events at places</option>
+            <option value="ordnance">Bomb / ordnance manuals and dictionaries</option>
+            <option value="reference">Reference only: store and search, no map points</option>
+          </select></div>
+        <div class="group"><label for="u-author">Author / publisher (optional)</label><input type="text" id="u-author"></div>
+      </div>
+      <div class="grid2">
+        <div class="group"><label for="u-scope">Only events located in</label><input type="text" id="u-scope" value="Germany" placeholder="e.g. Germany, or Baden-Württemberg"></div>
+        <div class="group"><label for="u-kw">Only pages mentioning (optional)</label><input type="text" id="u-kw" placeholder="Stuttgart, Ulm, Heilbronn…"></div>
+      </div>
+      <div class="grid2">
+        <div class="group"><label for="u-from">From page</label><input type="number" id="u-from" min="1" value="1"></div>
+        <div class="group"><label for="u-to">To page</label><input type="number" id="u-to" min="1" placeholder="last"></div>
+      </div>
+      <label class="chk"><input type="checkbox" id="u-readnow" checked><span id="u-readnow-t">Read the stored files right away (one after another; you can pause)</span></label>
+      <span class="hint" id="u-help">Files are stored with this map; anything over 20 MB is split into page-range parts so every page still opens with one click. Scanned PDFs without a text layer are stored but need OCR before they can be read: ask Claude in chat to run it. Reading puts one map point per place mentioned, with the page number and a short quote.</span>
+      <div class="group" id="u-progress" hidden><div class="bar"><i id="u-bar" style="width:0%"></i></div><div class="log" id="u-log"></div></div>
+    </div>
+    <div class="df"><button class="btn" id="u-stop" hidden>Pause</button><button class="btn primary" id="u-go">Store and read</button></div>
+  </div>
+</div>
+<div class="modal" id="m-dup" hidden>
+  <div class="dlg" role="dialog" aria-modal="true" aria-labelledby="md-title" style="width:min(520px,100%)">
+    <div class="dh"><h2 id="md-title">Already stored</h2></div>
+    <div class="db" id="md-body"></div>
+    <div class="df" style="justify-content:space-between"><label class="chk"><input type="checkbox" id="md-all">Do the same for the other duplicates</label>
+      <span class="row"><button class="btn" data-dup="keep">Keep both</button><button class="btn" data-dup="replace">Replace</button><button class="btn primary" data-dup="skip">Skip</button></span></div>
+  </div>
+</div>
+<div class="modal" id="m-confirm" hidden>
+  <div class="dlg" role="dialog" aria-modal="true" aria-labelledby="mc-title" style="width:min(440px,100%)">
+    <div class="dh"><h2 id="mc-title">Confirm</h2></div>
+    <div class="db" id="mc-body"></div>
+    <div class="df"><button class="btn" id="mc-no">Cancel</button><button class="btn primary" id="mc-yes">Delete</button></div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="config.js"></script>
+<script src="backend.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+<script>
+"use strict";
+/* ---------- constants ---------- */
+const CLASSES = {
+  "heavy":{label:"Heavy bombers (B-17, B-24)",v:"--c-heavy",bombs:10},
+  "medium":{label:"Medium / light bombers (B-26, A-20, A-26)",v:"--c-medium",bombs:6},
+  "fighter-bomber":{label:"Fighter-bombers, ground support",v:"--c-fb",bombs:2},
+  "fighter":{label:"Fighter sweeps, escort, air combat",v:"--c-fighter",bombs:0},
+  "unit-move":{label:"Unit moves, bases, occupation",v:"--c-move",bombs:0},
+  "ground":{label:"Ground fighting",v:"--c-ground",bombs:0},
+  "recon":{label:"Reconnaissance",v:"--c-other",bombs:0},
+  "transport":{label:"Transport, supply drops",v:"--c-other",bombs:0},
+  "other":{label:"Other",v:"--c-other",bombs:0}
+};
+const ASSUMED = {"heavy":12,"medium":12,"fighter-bomber":8};
+const TARGET_FINDS = {
+  "marshalling yard":"Rail yards drew dense bomb patterns. Duds lie in track beds, embankments, sidings and the housing next to the yard. Expect 500 lb and 1000 lb GP bombs, some with long-delay tail fuzes.",
+  "rail":"Rail lines and junctions: GP bomb duds along embankments, cuttings and station areas; rockets and cal .50 rounds where fighter-bombers attacked trains.",
+  "bridge":"Bridges were attacked with heavy GP bombs (1000–2000 lb). Duds can lie in river beds, banks and approach ramps; also German demolition charges on the bridge itself.",
+  "airfield":"Airfields were hit with fragmentation clusters (20 lb bombs lying close to the surface) and GP bombs; strafing left cal .50 ammunition. Expect German airfield ammunition, flak positions and demolition remains too.",
+  "industry":"Factories were attacked with GP bombs mixed with incendiary clusters. Duds under buildings, in yards and in neighbouring blocks; incendiary remains near the surface.",
+  "oil":"Oil plants received very dense GP patterns over repeated raids; high dud density across the plant area.",
+  "city area":"Town areas hit as targets of opportunity or by radar bombing: patterns scatter over kilometres, GP bombs mixed with 4 lb magnesium incendiaries.",
+  "depot":"Depots: besides air-dropped bombs, the stored German ammunition was often blown up or scattered; post-war blasting and dumping is common.",
+  "troops":"Ground-support attacks and fighting: artillery and mortar shells, rockets, grenades, Panzerfaust and infantry ammunition from both sides, plus fire-bomb and rocket remains.",
+  "transport":"Attacks on road and rail traffic: rockets, 250–500 lb bombs and cal .50 ammunition along roads and lines.",
+  "harbour":"Harbours: GP and SAP bombs, duds in quay walls and basins.",
+  "military installation":"Barracks, headquarters and bases: ammunition stores, post-war Allied ammunition dumps and disposal pits.",
+  "ground combat":"Ground fighting recorded here: artillery and mortar shells, tank and anti-tank rounds, grenades, Panzerfaust, mines and infantry ammunition of both sides; abandoned or blown-up ammunition and field positions.",
+  "other":"Sweeps and air combat over the area: cal .50 ammunition, jettisoned drop tanks and occasionally jettisoned bombs; aircraft crash sites can hold ammunition."
+};
+const TARGETS = Object.keys(TARGET_FINDS);
+const START = {lat:48.7758, lon:9.1829, r:20, label:"Stuttgart"};
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const fmt = n => n == null ? "—" : Math.round(n).toLocaleString("en-GB");
+
+/* ---------- state ---------- */
+const S = {events:[], sources:{}, ord:[], db:null, assets:null, sample:null,
+  mode:"radius", level:"state", sel:{type:"radius", lat:START.lat, lon:START.lon, r:START.r, label:START.label},
+  from:"1939-09-01", to:"1945-12-31", classes:new Set(Object.keys(CLASSES)), dud:0.10,
+  layers:{urban:true, rail:true, roads:false, rivers:true, districts:true}, loaded:{events:false}};
+const pagesCache = {};
+
+/* ---------- map ---------- */
+const map = L.map("map",{preferCanvas:true, minZoom:4, maxZoom:16, zoomSnap:0.5, attributionControl:true}).setView([START.lat, START.lon], 9);
+map.attributionControl.setPrefix(false);
+map.attributionControl.addAttribution("Basemap: Natural Earth, deutschlandGeoJSON");
+const panes = ["land","urban","water","lines","admin","selp"]; panes.forEach((p,i)=>{map.createPane(p).style.zIndex = 200+i*10;});
+map.createPane("labels").style.zIndex=450; map.getPane("labels").style.pointerEvents="none";
+const L_ = {};
+const geo = {};
+function style(){
+  return {
+    countries:{pane:"land",color:css("--border"),weight:1,fillColor:css("--land"),fillOpacity:1},
+    admin1:{pane:"admin",color:css("--border"),weight:.9,fill:true,fillOpacity:0,dashArray:"3 3"},
+    kreise:{pane:"admin",color:css("--kreis"),weight:.6,fill:true,fillOpacity:0},
+    urban:{pane:"urban",stroke:false,fillColor:css("--urban"),fillOpacity:1},
+    lakes:{pane:"water",stroke:false,fillColor:css("--water"),fillOpacity:1},
+    rivers:f=>({pane:"water",color:css("--water"),weight:Math.max(.8,3.2-(f.properties.scalerank||6)*.3)}),
+    rail:{pane:"lines",color:css("--rail"),weight:1,dashArray:"4 3",opacity:.8},
+    roads:{pane:"lines",color:css("--road"),weight:1.2}
+  };
+}
+async function loadBase(){
+  const names = ["countries","admin1","kreise","urban","lakes","rivers","rail","roads","places"];
+  const res = await Promise.all(names.map(n => fetch("basemap/"+n+".json").then(r=>r.json()).catch(()=>null)));
+  names.forEach((n,i)=>geo[n]=res[i]);
+  const st = style();
+  for (const n of ["countries","urban","lakes","rivers","rail","roads","admin1","kreise"]) {
+    if (!geo[n]) continue;
+    L_[n] = L.geoJSON(geo[n],{style:st[n], interactive:false});
+  }
+  ["countries","urban","lakes","rivers","rail","admin1","kreise"].forEach(n=>L_[n]&&L_[n].addTo(map));
+  buildLabels(); applyLayers(); buildGazetteer();
+}
+function restyle(){ const st=style(); for (const n in L_) if (L_[n].setStyle && st[n]) L_[n].setStyle(st[n]); drawSelection(); drawEvents(); }
+const mq = matchMedia("(prefers-color-scheme: dark)"); mq.addEventListener?.("change",restyle);
+new MutationObserver(restyle).observe(document.documentElement,{attributes:true,attributeFilter:["data-theme"]});
+
+let labelLayer = L.layerGroup().addTo(map);
+function buildLabels(){
+  labelLayer.clearLayers(); if(!geo.places) return;
+  const z = map.getZoom();
+  for (const [name,lat,lon,pop] of geo.places){
+    const need = pop>=1e6?4:pop>=3e5?6:pop>=1e5?7.5:pop>=3e4?9:10;
+    if (z < need) continue;
+    L.marker([lat,lon],{interactive:false,pane:"labels",icon:L.divIcon({className:"lbl-place"+(pop>=3e5?" big":""),html:esc(name),iconSize:null,iconAnchor:[-7,14]})}).addTo(labelLayer);
+  }
+}
+map.on("zoomend",()=>{buildLabels();applyLayers();});
+function applyLayers(){
+  const z = map.getZoom(), lv = S.layers;
+  const tog = (n,on)=>{ if(!L_[n]) return; on ? L_[n].addTo(map) : map.removeLayer(L_[n]); };
+  tog("urban",lv.urban); tog("rail",lv.rail); tog("roads",lv.roads); tog("rivers",lv.rivers); tog("lakes",lv.rivers);
+  tog("kreise", lv.districts && (z>=8 || (S.mode==="region" && S.level==="district")));
+}
+
+/* ---------- selection ---------- */
+let selLayer = L.layerGroup().addTo(map);
+function drawSelection(){
+  selLayer.clearLayers();
+  const s = S.sel, c = css("--sel");
+  if (s.type==="radius"){
+    L.circle([s.lat,s.lon],{radius:s.r*1000,color:c,weight:2,fillColor:c,fillOpacity:.06,interactive:false,pane:"selp"}).addTo(selLayer);
+    L.circleMarker([s.lat,s.lon],{radius:4,color:c,fillColor:c,fillOpacity:1,interactive:false,pane:"selp"}).addTo(selLayer);
+  } else if (s.type==="region"){
+    L.geoJSON(s.feature,{style:{color:c,weight:2.5,fillColor:c,fillOpacity:.07},interactive:false,pane:"selp"}).addTo(selLayer);
+  }
+}
+function setMode(m){
+  S.mode = m;
+  $("#m-radius").classList.toggle("on",m==="radius"); $("#m-region").classList.toggle("on",m==="region"); $("#m-view").classList.toggle("on",m==="view");
+  $("#radiusCtl").hidden = m!=="radius"; $("#regionCtl").hidden = m!=="region";
+  const mm = $("#mapmode");
+  if (m==="radius"){ mm.hidden=false; mm.textContent="Click the map to set the centre"; }
+  else if (m==="region"){ mm.hidden=false; mm.textContent="Click a "+({country:"country",state:"state",district:"district"})[S.level]+" to select it"; }
+  else { mm.hidden=true; S.sel={type:"view",label:"Current map view"}; drawSelection(); render(); }
+  applyLayers();
+}
+map.on("click",e=>{
+  if (S.mode==="region"){ const n={country:"countries",state:"admin1",district:"kreise"}[S.level]; const f=findFeature(n,e.latlng.lat,e.latlng.lng); if(f) selectRegion(f,n); return; }
+  if (S.mode!=="radius") return;
+  S.sel = {type:"radius", lat:e.latlng.lat, lon:e.latlng.lng, r:+$("#rad").value, label:nearestName(e.latlng.lat,e.latlng.lng)};
+  drawSelection(); render();
+});
+map.on("moveend",()=>{ if (S.sel.type==="view") render(); });
+function findFeature(n,lat,lon){
+  for (const f of (geo[n]?.features||[])){ const b=f._bb||(f._bb=bboxOf(f.geometry)); if(lon<b[0]||lon>b[2]||lat<b[1]||lat>b[3]) continue; if(inPoly(lon,lat,f.geometry)) return f; }
+  return null;
+}
+function selectRegion(f, layer){
+  const p=f.properties, label = layer==="kreise" ? `${p.name} (${p.type||"district"}, ${p.state})` : layer==="admin1" ? `${p.name}${p.type?" ("+p.type+")":""}` : p.name;
+  S.sel = {type:"region", feature:f, label, bbox:bboxOf(f.geometry)};
+  drawSelection(); render();
+}
+function bboxOf(g){ let b=[180,90,-180,-90]; const walk=c=>{ if(typeof c[0]==="number"){b[0]=Math.min(b[0],c[0]);b[1]=Math.min(b[1],c[1]);b[2]=Math.max(b[2],c[0]);b[3]=Math.max(b[3],c[1]);} else c.forEach(walk); }; walk(g.coordinates); return b; }
+function inRing(x,y,r){ let ins=false; for(let i=0,j=r.length-1;i<r.length;j=i++){ const [xi,yi]=r[i],[xj,yj]=r[j]; if(((yi>y)!==(yj>y)) && (x < (xj-xi)*(y-yi)/(yj-yi)+xi)) ins=!ins; } return ins; }
+function inPoly(lon,lat,g){
+  const polys = g.type==="Polygon"?[g.coordinates]:g.type==="MultiPolygon"?g.coordinates:[];
+  return polys.some(p => inRing(lon,lat,p[0]) && !p.slice(1).some(h=>inRing(lon,lat,h)));
+}
+function km(a,b,c,d){ const R=6371,t=Math.PI/180,dl=(c-a)*t,dn=(d-b)*t; const x=Math.sin(dl/2)**2+Math.cos(a*t)*Math.cos(c*t)*Math.sin(dn/2)**2; return 2*R*Math.asin(Math.sqrt(x)); }
+function inSel(e){
+  const s=S.sel; if (e.lat==null||e.lon==null) return false;
+  if (s.type==="radius") return km(s.lat,s.lon,e.lat,e.lon) <= s.r;
+  if (s.type==="region"){ const b=s.bbox; if(e.lon<b[0]||e.lon>b[2]||e.lat<b[1]||e.lat>b[3]) return false; return inPoly(e.lon,e.lat,s.feature.geometry); }
+  return map.getBounds().contains([e.lat,e.lon]);
+}
+function nearestName(lat,lon){
+  let best=null,bd=1e9;
+  for (const g of gaz) if (g.kind==="place"||g.kind==="event"){ const d=km(lat,lon,g.lat,g.lon); if(d<bd){bd=d;best=g;} }
+  return best ? (bd<2 ? best.name : `${bd.toFixed(0)} km from ${best.name}`) : `${lat.toFixed(3)}, ${lon.toFixed(3)}`;
+}
+
+/* ---------- gazetteer & search ---------- */
+let gaz = [];
+function buildGazetteer(){
+  gaz = [];
+  (geo.places||[]).forEach(([n,lat,lon,pop,iso])=>gaz.push({name:n,lat,lon,kind:"place",note:iso,pop}));
+  (geo.admin1?.features||[]).forEach(f=>gaz.push({name:f.properties.name,kind:"state",note:f.properties.type||"",f,layer:"admin1"}));
+  (geo.kreise?.features||[]).forEach(f=>gaz.push({name:f.properties.name,kind:"district",note:f.properties.state,f,layer:"kreise"}));
+  (geo.countries?.features||[]).forEach(f=>gaz.push({name:f.properties.name,kind:"country",note:"",f,layer:"countries"}));
+  const seen=new Set();
+  S.events.forEach(e=>{ const k=e.place; if(!k||seen.has(k)) return; seen.add(k); gaz.push({name:k,lat:e.lat,lon:e.lon,kind:"event",note:"event place"}); });
+  (S.villages||[]).forEach(([n,lat,lon,pop])=>{ if(!seen.has(n)) gaz.push({name:n,lat,lon,kind:"town / village",note:pop?pop.toLocaleString("en-GB")+" inh.":"",pop:pop||0}); });
+}
+fetch("data/gaz_de.json").then(r=>r.json()).then(v=>{ S.villages=v; buildGazetteer(); }).catch(()=>{});
+const norm = s => String(s||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/ß/g,"ss");
+$("#q").addEventListener("input",()=>{
+  const q=norm($("#q").value.trim()), box=$("#sugg");
+  $("#locate").hidden = q.length<3; $("#qhint").textContent="";
+  if (q.length<2){ box.hidden=true; return; }
+  const hits = gaz.filter(g=>norm(g.name).includes(q)).sort((a,b)=>(norm(a.name).startsWith(q)?0:1)-(norm(b.name).startsWith(q)?0:1) || (b.pop||0)-(a.pop||0)).slice(0,12);
+  box.innerHTML = hits.map((g,i)=>`<button data-i="${i}"><span>${esc(g.name)}</span><small>${esc(g.kind)}${g.note?" · "+esc(g.note):""}</small></button>`).join("") || `<div class="empty" style="padding:6px 8px">No match in the map's place list. Try “Locate with Claude”.</div>`;
+  box.hidden=false;
+  box.querySelectorAll("button").forEach(b=>b.onclick=()=>pickGaz(hits[+b.dataset.i]));
+});
+function pickGaz(g){
+  $("#sugg").hidden=true; $("#q").value=g.name;
+  if (g.f){ setMode("region"); S.level={admin1:"state",kreise:"district",countries:"country"}[g.layer]; syncLevel(); selectRegion(g.f,g.layer); const b=S.sel.bbox; map.fitBounds([[b[1],b[0]],[b[3],b[2]]],{padding:[20,20]}); }
+  else gotoPoint(g.lat,g.lon,g.name);
+}
+function gotoPoint(lat,lon,label,zoom){
+  setMode("radius"); S.sel={type:"radius",lat,lon,r:+$("#rad").value,label};
+  map.setView([lat,lon], zoom || Math.max(map.getZoom(), S.sel.r>25?9:10)); drawSelection(); render();
+}
+let pin=null;
+async function geocode(q){
+  const go = async extra => (await fetch("https://nominatim.openstreetmap.org/search?format=jsonv2&limit=6&accept-language=de,en&q="+encodeURIComponent(q)+extra,{headers:{Accept:"application/json"}})).json();
+  let r = await go("&countrycodes=de"); if (!r.length) r = await go("");
+  return r;
+}
+$("#locate").onclick = async ()=>{
+  const q=$("#q").value.trim(); if(q.length<3) return;
+  $("#locate").disabled=true; $("#qhint").textContent="Searching the address…";
+  try{
+    const r = await geocode(q);
+    if (!r.length){ $("#qhint").textContent="No address found. Check the spelling, e.g. “Hauptstraße 4b, Stuttgart”."; return; }
+    const box=$("#sugg");
+    box.innerHTML = r.map((g,i)=>`<button data-a="${i}"><span>${esc(g.display_name.split(",").slice(0,3).join(","))}</span><small>${esc(g.type||g.category||"address")}</small></button>`).join("");
+    box.hidden=false; $("#qhint").textContent="Choose the right address.";
+    box.querySelectorAll("button").forEach(b=>b.onclick=()=>{ const g=r[+b.dataset.a]; box.hidden=true; $("#qhint").textContent="Address search: © OpenStreetMap contributors (Nominatim).";
+      const label=g.display_name.split(",").slice(0,2).join(",").trim(); gotoPoint(+g.lat,+g.lon,label,16);
+      pin?.remove(); pin=L.circleMarker([+g.lat,+g.lon],{radius:7,color:"#fff",weight:2,fillColor:"#111",fillOpacity:1,pane:"selp"}).bindTooltip(esc(label),{permanent:true,direction:"right"}).addTo(map); });
+    if (r.length===1) box.querySelector("button").click();
+  }catch{ $("#qhint").textContent="The address service could not be reached. Try again in a moment."; }
+  finally{ $("#locate").disabled=false; }
+};
+$("#q").addEventListener("keydown",e=>{ if(e.key!=="Enter") return; e.preventDefault(); const q=norm($("#q").value.trim()); const hit=gaz.find(g=>norm(g.name)===q && !g.f); if(hit) pickGaz(hit); else $("#locate").click(); });
+document.addEventListener("click",e=>{ if(!e.target.closest("#sugg")&&e.target.id!=="q") $("#sugg").hidden=true; });
+
+/* ---------- controls ---------- */
+$("#m-radius").onclick=()=>{ setMode("radius"); if(S.sel.type!=="radius"){ const c=map.getCenter(); S.sel={type:"radius",lat:c.lat,lon:c.lng,r:+$("#rad").value,label:nearestName(c.lat,c.lng)}; drawSelection(); render(); } };
+$("#m-region").onclick=()=>setMode("region");
+$("#m-view").onclick=()=>setMode("view");
+$("#rad").oninput=()=>{ $("#radv").textContent=$("#rad").value+" km"; if(S.sel.type==="radius"){ S.sel.r=+$("#rad").value; drawSelection(); renderSoon(); } };
+function syncLevel(){ document.querySelectorAll("[data-lv]").forEach(b=>b.classList.toggle("on",b.dataset.lv===S.level)); applyLayers(); if(S.mode==="region") $("#mapmode").textContent="Click a "+S.level+" to select it"; }
+document.querySelectorAll("[data-lv]").forEach(b=>b.onclick=()=>{ S.level=b.dataset.lv; syncLevel(); });
+$("#from").onchange=()=>{S.from=$("#from").value||"1900-01-01"; drawEvents(); render();};
+$("#to").onchange=()=>{S.to=$("#to").value||"2100-01-01"; drawEvents(); render();};
+$("#classes").innerHTML = Object.entries(CLASSES).filter(([k])=>!["recon","transport"].includes(k)).map(([k,c])=>`<label class="chk"><input type="checkbox" data-cl="${k}" checked><span class="dot" style="background:var(${c.v})"></span>${esc(c.label)}</label>`).join("");
+$("#classes").querySelectorAll("input").forEach(i=>i.onchange=()=>{ i.checked?S.classes.add(i.dataset.cl):S.classes.delete(i.dataset.cl); if(i.dataset.cl==="other"){["recon","transport"].forEach(k=>i.checked?S.classes.add(k):S.classes.delete(k));} drawEvents(); render(); });
+const LAYERS={urban:"Built-up areas",rail:"Railways",roads:"Major roads",rivers:"Rivers and lakes",districts:"District borders (DE)"};
+$("#layers").innerHTML = Object.entries(LAYERS).map(([k,l])=>`<label class="chk"><input type="checkbox" data-ly="${k}" ${S.layers[k]?"checked":""}>${l}</label>`).join("");
+$("#layers").querySelectorAll("input").forEach(i=>i.onchange=()=>{S.layers[i.dataset.ly]=i.checked; applyLayers();});
+document.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>{ document.querySelectorAll(".tabs button").forEach(x=>x.setAttribute("aria-selected",x===b)); document.querySelectorAll(".pane").forEach(p=>p.hidden=p.id!==b.dataset.pane); });
+function legend(){
+  const armies=["US First Army","US Third Army","US Seventh Army","US Ninth Army","British Second Army","Canadian First Army","French First Army"];
+  $("#legend").innerHTML = `<details open><summary class="lbl">Legend</summary><div class="lgbody"><span class="lbl">Air attacks</span>`+["heavy","medium","fighter-bomber","fighter","unit-move"].map(k=>`<span class="row" style="gap:6px"><span class="dot" style="background:var(${CLASSES[k].v})"></span>${esc(CLASSES[k].label.split(" (")[0])}</span>`).join("")
+    +`<span class="hint">Size = tonnage or aircraft. Zoom in for schematic footprints; rail targets are stretched along the line.</span>`
+    +`<span class="lbl" style="margin-top:4px">Ground fighting by army</span><div class="armies">`+armies.map(a=>`<span class="row" style="gap:4px">${arrowSvg(ARMY_COL[a],0,12)}${esc(a.replace("US ","US ").replace(" Army",""))}</span>`).join("")+`</div><span class="hint">Arrow = direction of the unit's advance; diamond = no direction known.</span></div></details>`;
+}
+
+/* ---------- events on map ---------- */
+const evLayer = L.layerGroup().addTo(map);
+const F = {q:"", target:"", army:"", minT:0, unc:false};
+const visible = e => e.date>=S.from && e.date<=S.to && S.classes.has(e.missionClass||"other") && !S.hiddenSources.has(e.sourceId)
+  && (!F.target || e.targetType===F.target) && (!F.army || String(e.army||"").includes(F.army))
+  && (!F.minT || tonsOf(e)>=F.minT) && (!F.unc || e.locPrecision!=="uncertain")
+  && (!F.q || norm(`${e.place} ${e.summary} ${e.unit||""} ${e.force||""} ${e.placeAsWritten||""}`).includes(F.q));
+const ARMY_COL = {"US First Army":"#1f6fb2","US Third Army":"#2f8f4e","US Seventh Army":"#8e44ad","US Ninth Army":"#d35400","US Fifteenth Army":"#7f8c8d","British Second Army":"#b58900","Canadian First Army":"#a0522d","French First Army":"#119c96","US XVIII Airborne Corps":"#34495e","Allied forces":"#6b7280"};
+const armyCol = a => ARMY_COL[String(a||"").split(";")[0].trim()] || "#6b7280";
+const FOOT_ZOOM = 10;
+const RAILT = new Set(["marshalling yard","rail","bridge"]);
+function hash(str){ let h=2166136261; for (const c of String(str)) h=Math.imul(h^c.charCodeAt(0),16777619); return h>>>0; }
+function rng(seed){ let x=seed||1; return ()=>{ x^=x<<13; x^=x>>>17; x^=x<<5; return (x>>>0)/4294967296; }; }
+/* irregular, repeatable outline around a point; R in metres, aspect>1 stretches along bearing ori (degrees from north) */
+function blob(lat,lon,R,seed,aspect=1,ori=0){
+  const r=rng(seed), n=20, k=[r()*6.3,r()*6.3,r()*6.3], amp=[.16+r()*.12,.09+r()*.07,.05+r()*.05];
+  const th=ori*Math.PI/180, c=Math.cos(lat*Math.PI/180), pts=[];
+  for (let i=0;i<n;i++){ const t=i/n*2*Math.PI, rr=1+amp[0]*Math.sin(2*t+k[0])+amp[1]*Math.sin(3*t+k[1])+amp[2]*Math.sin(5*t+k[2]);
+    const x=Math.sin(t)*rr*R/Math.sqrt(aspect), y=Math.cos(t)*rr*R*Math.sqrt(aspect);
+    pts.push([lat+(-x*Math.sin(th)+y*Math.cos(th))/111320, lon+(x*Math.cos(th)+y*Math.sin(th))/(111320*c)]); }
+  return pts;
+}
+const tonsOf = e => e.tonsTotal ?? ((e.tonsHE||0)+(e.tonsIC||0)+(e.tonsFrag||0));
+function footR(list){
+  const t=list.reduce((s,e)=>s+tonsOf(e),0), ac=list.reduce((s,e)=>s+(e.aircraftCount||ASSUMED[e.missionClass]||4),0);
+  return t>0 ? Math.min(3500,250+110*Math.sqrt(t)) : Math.min(2500,200+80*Math.sqrt(ac));
+}
+function arrowSvg(col,dir,size){
+  const path = dir==null ? "M0-7 L7 0 L0 7 L-7 0Z" : "M0-9 L7 7 L0 3 L-7 7Z";
+  return `<svg viewBox="-10 -10 20 20" width="${size}" height="${size}" style="transform:rotate(${dir??0}deg)"><path d="${path}" fill="${col}" stroke="#fff" stroke-width="1.5" stroke-linejoin="round"/></svg>`;
+}
+const arrowIcon = (col,dir,n) => { const sz=Math.round(Math.min(24,12+Math.sqrt(n)*2.5)); return L.divIcon({className:"gicon",iconSize:[sz,sz],html:arrowSvg(col,dir,sz)}); };
+function drawEvents(){
+  evLayer.clearLayers();
+  const foot = map.getZoom()>=FOOT_ZOOM; S.footOn=foot;
+  const groups = new Map();
+  for (const e of S.events){ if(!visible(e)||e.lat==null||(S.mapYear&&!e.date.startsWith(S.mapYear))) continue; const k=(e.missionClass==="ground"?"g":"a")+e.lat.toFixed(3)+","+e.lon.toFixed(3); (groups.get(k)||groups.set(k,[]).get(k)).push(e); }
+  for (const [k,list] of groups){
+    const ll=[list[0].lat,list[0].lon];
+    const tip = `${esc(list[0].place)} · ${list.length} event${list.length>1?"s":""}`;
+    let m;
+    if (k[0]==="g"){
+      const last=[...list].sort((a,b)=>b.date.localeCompare(a.date))[0], col=armyCol(last.army);
+      if (foot) L.polygon(blob(ll[0],ll[1],700+120*Math.sqrt(list.length),hash(k)),{color:col,weight:1,dashArray:"3 3",fillColor:col,fillOpacity:.12,interactive:false}).addTo(evLayer);
+      m = L.marker(ll,{icon:arrowIcon(col,last.dir,list.length),keyboard:false,riseOnHover:true});
+      m.bindTooltip(`${tip} · ${esc(String(last.army).split(";")[0])}`,{direction:"top"});
+    } else {
+      const ac = list.reduce((s,e)=>s+(e.aircraftCount||ASSUMED[e.missionClass]||4),0);
+      const dom = ["heavy","medium","fighter-bomber","fighter","unit-move","other"].find(c=>list.some(e=>e.missionClass===c))||"other";
+      const col = css(CLASSES[dom]?.v||"--c-other");
+      if (foot){
+        const rl=list.filter(e=>RAILT.has(e.targetType)&&e.ori!=null), along = rl.length*2>=list.length;
+        m = L.polygon(blob(ll[0],ll[1],footR(list),hash(k),along?3.2:1,along?rl[0].ori:0),{bubblingMouseEvents:false,color:col,weight:1.2,fillColor:col,fillOpacity:.32});
+        m.bindTooltip(`${tip} · schematic footprint`,{direction:"top",sticky:true});
+      } else {
+        m = L.circleMarker(ll,{bubblingMouseEvents:false,radius:Math.min(16,3+Math.sqrt(ac)/3),color:css("--panel"),weight:.8,fillColor:col,fillOpacity:.72});
+        m.bindTooltip(tip,{direction:"top"});
+      }
+    }
+    m.bindPopup(()=>popupHtml(list),{maxWidth:320});
+    m.on("popupopen",ev=>wireSrcButtons(ev.popup.getElement()));
+    m.addTo(evLayer);
+  }
+}
+map.on("zoomend",()=>{ if ((map.getZoom()>=FOOT_ZOOM)!==S.footOn) drawEvents(); });
+legend();
+function popupHtml(list){
+  list = [...list].sort((a,b)=>a.date.localeCompare(b.date));
+  const more = list.length>40 ? list.length-40 : 0; const shown = more ? list.slice(0,40) : list;
+  return `<div class="pop"><h3>${esc(list[0].place)} <span class="mono hint">${list.length}</span></h3>${more?`<span class="hint">First 40 of ${list.length}, by date. Select this area to see all in the report.</span>`:""}${shown.map(e=>`<div class="ev"><span class="mono hint">${esc(e.date)}</span><span>${esc(e.summary)}</span><span class="meta-line">${classPill(e)} ${srcChip(e)}</span></div>`).join("")}</div>`;
+}
+function classPill(e){ const c=CLASSES[e.missionClass]||CLASSES.other; return `<span class="pill" style="color:var(${c.v})">${esc((e.missionClass||"other").replace("-"," "))}</span>`; }
+function srcChip(e){
+  const s=S.sources[e.sourceId]; const short = s ? (s.short || s.title.split(/[,(—–:]/)[0].trim().slice(0,24)) : "source";
+  const where = e.page ? `p. ${e.page}` : (e.sourceRef||"");
+  return `<button class="src" data-ev="${esc(e._id)}" title="Open the source for this event">↗ ${esc(short)}${where?" · "+esc(where):""}</button>`;
+}
+function wireSrcButtons(root){ root.querySelectorAll("button.src[data-ev]").forEach(b=>b.onclick=()=>openSource(S.events.find(e=>e._id===b.dataset.ev))); }
+
+/* ---------- report ---------- */
+let rt=null; function renderSoon(){ clearTimeout(rt); rt=setTimeout(render,120); }
+function ordFor(e){
+  const out=[];
+  for (const o of S.ord){
+    const car=o.carriers||[], tg=o.targets||[];
+    const raf=/RAF|Bomber Command/i.test(e.force||""), forces=o.forces||["USAAF"];
+    if (raf ? !forces.includes("RAF") : !forces.includes("USAAF")) continue;
+    if (!car.includes(e.missionClass)) continue;
+    if (!(tg.includes(e.targetType) || (e.targetType==="other" && tg.includes("other")))) continue;
+    out.push(o);
+  }
+  return out;
+}
+function selEvents(){ return S.events.filter(e=>visible(e)&&inSel(e)).sort((a,b)=>a.date.localeCompare(b.date)||String(a.place).localeCompare(b.place)); }
+function analyse(evs){
+  let attacks=0, ac=0, acAssumed=false, bombs=0, tHE=0, tIC=0, tFR=0, tonnageEvents=0;
+  const byTarget={}, ordAgg=new Map();
+  for (const e of evs){
+    const bpa = CLASSES[e.missionClass]?.bombs||0;
+    const hasT = e.tonsHE!=null || e.tonsIC!=null || e.tonsFrag!=null;
+    if (bpa>0 || hasT){ attacks++; let n=e.aircraftCount; if(n==null){ n=hasT?0:(ASSUMED[e.missionClass]||0); if(!hasT) acAssumed=true; } ac+=n;
+      if (hasT){ tonnageEvents++; tHE+=e.tonsHE||0; tIC+=e.tonsIC||0; tFR+=e.tonsFrag||0; bombs+=(e.tonsHE||0)*4 + (e.tonsFrag||0)*4; }
+      else bombs+=n*bpa; }
+    byTarget[e.targetType]=(byTarget[e.targetType]||0)+1;
+    for (const o of ordFor(e)){ const a=ordAgg.get(o._id)||{o,events:[]}; a.events.push(e); ordAgg.set(o._id,a); }
+  }
+  const rank={typical:0,possible:1,rare:2};
+  const ord=[...ordAgg.values()].sort((a,b)=>(rank[a.o.likelihood]??3)-(rank[b.o.likelihood]??3)||b.events.length-a.events.length);
+  const heavyAttacks = evs.filter(e=>e.missionClass==="heavy").length;
+  const has = t=>evs.some(e=>t.includes(e.targetType));
+  const heavyOn = t=>evs.some(e=>e.missionClass==="heavy"&&t.includes(e.targetType));
+  const flags=[];
+  if (ord.some(a=>a.o.category==="fuze"&&a.o.dudConcern==="high")) flags.push({lvl:"high",t:"Long-delay chemical fuzes possible",d:"Heavy-bomber attacks on rail, bridge, airfield or town targets could include bombs with M123/M124/M125 long-delay tail fuzes. Such duds can still detonate on their own and must never be moved."});
+  if (heavyOn(["city area","industry","depot"])) flags.push({lvl:"medium",t:"Incendiary remains",d:"4 lb magnesium incendiaries (some with an explosive charge) and 100 lb gel or phosphorus bombs, mostly close to the surface."});
+  if (has(["airfield"])) flags.push({lvl:"medium",t:"Fragmentation bombs near the surface",d:"20 lb frag bombs from AN-M1A2 clusters were spread over airfield areas; armed duds are sensitive."});
+  const gr = evs.filter(e=>e.missionClass==="ground");
+  const units = [...new Set(gr.flatMap(e=>String(e.unit||"").split(";").map(u=>u.trim()).filter(Boolean)))];
+  const gdays = [...new Set(gr.map(e=>e.date))].sort();
+  if (gr.length) flags.push({lvl:gdays.length>=3||gr.length>=6?"high":"medium",t:"Ground fighting recorded",d:`${gr.length} ground action${gr.length>1?"s":""} on ${gdays.length} day${gdays.length>1?"s":""} (${gdays[0]}${gdays.length>1?" to "+gdays.at(-1):""}) by ${units.slice(0,8).join(", ")}${units.length>8?` and ${units.length-8} more units`:""}. Expect artillery, mortar and tank rounds, mines, grenades, Panzerfaust and infantry ammunition of both sides, plus abandoned or blown-up stocks and field positions.`});
+  else if (has(["troops"])) flags.push({lvl:"medium",t:"Ground-fighting munitions",d:"Artillery, mortar, infantry and anti-tank munitions of both sides, not covered by air-war sources."});
+  if (evs.some(e=>e.missionClass==="unit-move")) flags.push({lvl:"low",t:"Bases and occupation",d:"Units based here after the fighting: check for ammunition stores, post-war dumps and disposal pits."});
+  if (evs.some(e=>e.missionClass==="fighter"||e.missionClass==="fighter-bomber")) flags.push({lvl:"low",t:"Aircraft ammunition",d:"Cal .50 rounds from strafing and air combat; crash sites may hold more."});
+  if (tIC>0 && !flags.some(f=>f.t==="Incendiary remains")) flags.push({lvl:"medium",t:"Incendiary remains",d:`${Math.round(tIC).toLocaleString("en-GB")} t of incendiaries recorded in this area: magnesium stick incendiaries (some with explosive charges) and phosphorus bombs, mostly near the surface.`});
+  if (evs.some(e=>/RAF/.test(e.force||"")&&e.missionClass==="heavy")) flags.push({lvl:"high",t:"RAF long-delay pistols possible",d:"RAF bombs could carry the No. 37 long-delay chemical pistol (delays up to 144 h, anti-withdrawal). Such duds are among the most dangerous finds and must never be moved."});
+  const level2 = !evs.length ? "none" : (tHE>=100 || heavyAttacks>=5 || flags.some(f=>f.lvl==="high")) ? "high" : attacks ? "medium" : "low";
+  const level3 = level2==="low" && gr.length ? "medium" : level2;
+  return {attacks, ac, acAssumed, heavyAttacks, byTarget, ord, flags, level:level3, tHE, tIC, tFR, tonnageEvents, ground:gr.length, units, gdays};
+}
+function render(){
+  const evs = selEvents(), A = analyse(evs), s=S.sel;
+  const areaTxt = s.type==="radius" ? `${s.r} km around ${esc(s.label)}` : s.type==="region" ? esc(s.label) : "Current map view";
+  const coords = s.type==="radius" ? `<span class="mono">${s.lat.toFixed(4)}° N, ${s.lon.toFixed(4)}° E</span> · ` : "";
+  const srcIds=[...new Set(evs.map(e=>e.sourceId))];
+  let h = `<div class="head"><span class="lbl">Historisch-genetische Rekonstruktion</span><h2>${areaTxt}</h2>
+    <div class="meta">${coords}${esc(S.from)} – ${esc(S.to)} · ${evs.length} recorded event${evs.length===1?"":"s"} from ${srcIds.length} source${srcIds.length===1?"":"s"}</div>
+    <div class="row"><button class="btn" data-jump="sec1">1 Events</button><button class="btn" data-jump="sec2">2 Ordnance</button><button class="btn" data-jump="sec3">3 Finds</button></div>
+    <div class="row"><button class="btn" id="copyrep">Copy report</button>${S.sample?`<select id="nlang" aria-label="Language"><option value="German">Deutsch</option><option value="English">English</option></select><button class="btn primary" id="narrate">Write text with Claude</button>`:""}</div>
+    </div><div id="narrbox" class="narr" style="margin:12px 16px 0" ${S.narrKey===areaTxt&&S.narrHtml?"":"hidden"}>${S.narrKey===areaTxt?S.narrHtml||"":""}</div>
+    ${S.sample&&evs.length?`<div class="chat"><span class="lbl">Ask about this area <span class="de">KI-Assistent</span></span><div class="row" style="flex-wrap:wrap;gap:4px">${CHAT_PRESETS.map((q,i)=>`<button class="btn chip" data-cp="${i}">${esc(q[0])}</button>`).join("")}</div><div id="chatlog">${(S.chat[areaTxt]||[]).map(chatHtml).join("")}</div><div class="row"><input type="text" id="chatq" placeholder="e.g. Which units fought here in April 1945?" style="flex:1"><button class="btn primary" id="chatgo">Ask</button></div></div>`:!S.sample&&evs.length?`<div class="chat"><span class="hint">AI summaries and questions are available to the map owner. ${KHM.isOwner?"":"Sign in as owner to use them."}</span></div>`:""}`;
+  // 1 sequence
+  h += `<div class="sec" id="sec1"><h3><span class="n">1</span>Sequence of events <span class="de">Ereignischronologie</span></h3>${evs.length?`<div class="tlwrap"><div class="row" style="justify-content:space-between"><span class="lbl">Timeline <span class="de">Zeitstrahl</span></span><span class="hint" id="tlinfo">Click a mark to show it on the small map and in the list</span></div><div id="tl"></div><span class="hint" id="mmnote"></span><div id="mmslot"></div></div>`:""}<div id="frontbox"></div>`;
+  if (!S.loaded.events) h += `<div class="empty">Loading events…</div>`;
+  else if (!evs.length) h += `<div class="empty">No recorded events in this area for the period and event types chosen. Widen the radius, change the filters, or add sources that cover this area.</div>`;
+  else h += (evs.length>400?`<div class="find" style="border-left:3px solid var(--warn)"><span>Showing the first 400 of ${evs.length.toLocaleString("en-GB")} events. Sections 2 and 3 use all of them. Narrow the area, the period or the sources to list everything.</span></div>`:"") + evs.slice(0,400).map((e,i)=>`<div class="evrow" id="row-${esc(e._id)}"><div class="d">${esc(e.date)}<br><span class="mono">E${i+1}</span></div><div class="t">
+      <span class="p">${esc(e.place)}${e.locPrecision==="uncertain"?' <span class="pill" style="color:var(--warn)">location uncertain</span>':""}</span>
+      <span class="s">${esc(e.summary)}</span>
+      <span class="meta-line">${classPill(e)}<span>${esc(e.targetType)}</span>${e.role&&e.role!=="unknown"?`<span>· ${esc(e.role==="opportunity"?"target of opportunity":e.role)}</span>`:""}${e.aircraftCount?`<span class="mono">· ${e.aircraftCount} ${esc(e.aircraft||"a/c")}</span>`:e.aircraft?`<span>· ${esc(e.aircraft)}</span>`:""}${s.type==="radius"?`<span class="mono">· ${km(s.lat,s.lon,e.lat,e.lon).toFixed(1)} km</span>`:""}</span>
+      <span class="meta-line">${srcChip(e)}<span>${e.missionClass==="ground"?`<span style="color:${armyCol(e.army)}">${arrowSvg(armyCol(e.army),e.dir,10)}</span> `:""}${esc(e.force||"")}${e.mission?" · "+esc(e.mission):""}</span></span></div></div>`).join("");
+  h += `</div>`;
+  // 2 ordnance
+  h += `<div class="sec" id="sec2"><h3><span class="n">2</span>Ordnance likely used <span class="de">Eingesetzte Kampfmittel</span></h3>`;
+  if (!evs.length) h += `<div class="empty">Appears once the area has recorded attacks.</div>`;
+  else if (!A.ord.length) h += `<div class="empty">No dictionary entry matches these events. Add an ordnance dictionary under Sources.</div>`;
+  else {
+    h += `<span class="hint">Matched from the ordnance dictionary by aircraft class and target type. The chronology rarely names the bomb load, so these are typical loads, not recorded ones.</span>
+    <table class="ord"><thead><tr><th>Type</th><th>Class</th><th>Use</th><th class="mono">Attacks</th></tr></thead><tbody>`;
+    A.ord.forEach((a,i)=>{ const o=a.o;
+      h += `<tr class="main" data-i="${i}" tabindex="0"><td><b>${esc(o.designation)}</b><br><span class="hint">${esc(o.name)}</span></td><td>${esc(o.category)}${o.weightLb?`<br><span class="mono hint">${o.weightLb} lb</span>`:""}</td><td><span class="pill lik-${esc(o.likelihood)}">${esc(o.likelihood)}</span>${o.dudConcern==="high"?'<br><span class="pill" style="color:var(--crit);margin-top:3px">high dud hazard</span>':""}</td><td class="mono">${a.events.length}</td></tr>
+      <tr class="det" data-d="${i}" hidden><td colspan="4"><div class="group" style="gap:4px">${o.filler?`<span><b>Filling:</b> ${esc(o.filler)}</span>`:""}${o.fuzes&&o.fuzes!=="—"?`<span><b>Fuzes:</b> ${esc(o.fuzes)}</span>`:""}<span>${esc(o.notes||"")}</span>
+      <span class="meta-line">Matched events: ${a.events.slice(0,12).map(e=>`<span class="mono">E${evs.indexOf(e)+1}</span>`).join(" ")}${a.events.length>12?" …":""}</span>
+      <span class="meta-line">${ordSrcChip(o)}</span></div></td></tr>`; });
+    h += `</tbody></table>`;
+  }
+  h += `</div>`;
+  // 3 finds
+  h += `<div class="sec" id="sec3"><h3><span class="n">3</span>What could be found <span class="de">Fundmöglichkeiten</span></h3>`;
+  if (!evs.length) h += `<div class="empty">No recorded events, so no indicator. This does not mean the area is free of ordnance: check other sources, aerial photographs and ground-fighting records.</div>`;
+  else {
+    const lvTxt={high:"High indication",medium:"Moderate indication",low:"Low indication"}[A.level];
+    h += `<div class="risk ${A.level}"><span class="lvl">${lvTxt}</span><span class="hint">from ${evs.length} recorded events in the loaded sources</span></div>
+    <div class="tiles"><div class="tile"><div class="v">${A.attacks}</div><div class="k">Bombing attacks</div></div>
+    ${A.tonnageEvents?`<div class="tile"><div class="v">${fmt(A.tHE+A.tIC+A.tFR)} t</div><div class="k">Bombs dropped (recorded)</div></div>`:`<div class="tile"><div class="v">${fmt(A.ac)}${A.acAssumed?"*":""}</div><div class="k">Aircraft attacking</div></div>`}
+    <div class="tile"><div class="v">${A.heavyAttacks}</div><div class="k">Heavy-bomber attacks</div></div>
+    <div class="tile"><div class="v">${A.ground}</div><div class="k">Ground actions${A.ground?` · ${A.units.length} units`:""}</div></div></div>
+    <span class="hint">${A.tonnageEvents?`${A.tonnageEvents} attacks have recorded tonnage (THOR): ${fmt(A.tHE)} t high explosive, ${fmt(A.tIC)} t incendiaries, ${fmt(A.tFR)} t fragmentation. `:""}The indication rates the area high with 100 t or more of recorded high explosive, 5 or more heavy-bomber attacks, or a high-hazard flag below. The same raid can appear in several sources, so counts over several sources overstate.</span>`;
+    if (A.flags.length) h += A.flags.map(f=>`<div class="find" style="border-left:3px solid var(${f.lvl==="high"?"--crit":f.lvl==="medium"?"--warn":"--ok"})"><b>${esc(f.t)}</b><span>${esc(f.d)}</span></div>`).join("");
+    h += `<span class="lbl">By target type</span>` + Object.entries(A.byTarget).sort((a,b)=>b[1]-a[1]).map(([t,n])=>`<div class="find"><b>${esc(t)} <span class="mono hint">× ${n}</span></b><span>${esc(TARGET_FINDS[t]||TARGET_FINDS.other)}</span></div>`).join("");
+    h += `<span class="lbl">Next steps</span><ul class="steps">
+      <li>Evaluate Allied aerial photographs from after each attack date listed above (Luftbildauswertung) for craters, possible dud entry holes and positions.</li>
+      <li>Request the Kampfmittelbeseitigungsdienst records for the area (in Baden-Württemberg: KMBD at Regierungspräsidium Stuttgart).</li>
+      <li>Compare with mission reports, damage records in the local archive and RAF Bomber Command records: the USAAF chronology does not cover RAF night raids.</li>
+      <li>Check ground-fighting and post-war use of the area (April 1945 front lines, depots, occupation camps).</li></ul>`;
+  }
+  h += `<div class="disc">This is a desk-study aid built from the sources loaded into this map. It does not replace a historical investigation or a clearance survey by a qualified Kampfmittel specialist.</div></div>`;
+  $("#report").innerHTML = h;
+  wireSrcButtons($("#report"));
+  $("#report").querySelectorAll("tr.main").forEach(tr=>{ const t=()=>{ const d=$(`#report tr[data-d="${tr.dataset.i}"]`); d.hidden=!d.hidden; }; tr.onclick=t; tr.onkeydown=e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();t();}}; });
+  $("#report").querySelectorAll("button.src[data-ord]").forEach(b=>b.onclick=()=>openOrdSource(S.ord.find(o=>o._id===b.dataset.ord)));
+  $("#copyrep").onclick=()=>copyReport(evs,A,areaTxt);
+  $("#report").querySelectorAll("[data-jump]").forEach(b=>b.onclick=()=>{ const r=$("#report"), t=document.getElementById(b.dataset.jump); r.scrollTop = t.offsetTop - r.querySelector(".head").offsetHeight; });
+  const nb=$("#narrate"); if(nb) nb.onclick=()=>narrate(evs,A,areaTxt);
+  wireChat(evs,A,areaTxt);
+  wireCites(evs); fillFront(); drawTimeline(evs); placeMini(evs);
+  $("#status").textContent = `${S.events.length} events · ${Object.keys(S.sources).length} sources · ${S.ord.length} ordnance types`;
+}
+function ordSrcChip(o){ const s=S.sources[o.sourceId]; return `<button class="src" data-ord="${esc(o._id)}">↗ ${esc(s?s.title.slice(0,34):"source")}${o.page?" · p. "+esc(o.page):""}</button>`; }
+async function copyReport(evs,A,area){
+  const plain = area.replace(/&amp;/g,"&");
+  let t = `# Historisch-genetische Rekonstruktion: ${plain}\nPeriod ${S.from} – ${S.to}\n\n## 1 Sequence of events\n`;
+  evs.forEach((e,i)=>{ const s=S.sources[e.sourceId]; t+=`E${i+1}  ${e.date}  ${e.place} — ${e.summary} [${s?s.title:e.sourceId}${e.page?", p. "+e.page:e.sourceRef?", "+e.sourceRef:""}]\n`; });
+  if (SIT.res?.hits?.length) t += `\nFront line: markings within ${SIT.res.c.r} km on ${SIT.res.hits.length} situation maps, first ${fmtDate(SIT.days[SIT.res.hits[0]].date)}, last ${fmtDate(SIT.days[SIT.res.hits.at(-1)].date)}.\n`;
+  t += `\n## 2 Ordnance likely used\n` + A.ord.map(a=>`- ${a.o.designation} (${a.o.name}), ${a.o.likelihood}, ${a.events.length} attacks`).join("\n");
+  t += `\n\n## 3 What could be found\nIndication: ${A.level}. ${A.ground?`${A.ground} ground actions by ${A.units.length} units. `:""}${A.attacks} bombing attacks (${A.heavyAttacks} by heavy bombers)${A.tonnageEvents?`, recorded ${fmt(A.tHE)} t high explosive, ${fmt(A.tIC)} t incendiaries`:""}.\n` + A.flags.map(f=>`- ${f.t}: ${f.d}`).join("\n");
+  try{ await navigator.clipboard.writeText(t); $("#copyrep").textContent="Copied"; setTimeout(()=>{const b=$("#copyrep"); if(b) b.textContent="Copy report";},1500); }catch{ $("#copyrep").textContent="Copy blocked"; }
+}
+let narrCtl=null;
+async function narrate(evs,A,area){
+  if (!evs.length) return;
+  const box=$("#narrbox"); box.hidden=false; box.textContent="Thinking…"; S.narrKey=area; S.narrHtml="Thinking…";
+  const lang=$("#nlang").value;
+  const lines = evs.slice(0,250).map((e,i)=>`E${i+1} | ${e.date} | ${e.place} | ${e.force||""} ${e.mission||""} | ${e.aircraftCount??"?"} ${e.aircraft||""} | ${e.missionClass} | ${e.targetType} | ${e.role} | ${e.summary}`).join("\n");
+  const ord = A.ord.slice(0,25).map(a=>`${a.o.designation} — ${a.o.name} — ${a.o.likelihood} — matched ${a.events.length} attacks — ${a.o.notes||""}`).join("\n");
+  const prompt = `You write the historical part of a UXO desk study (historisch-genetische Rekonstruktion / Kampfmittelvorerkundung) in ${lang}.
+Area: ${area.replace(/&amp;/g,"&")}. Period: ${S.from} to ${S.to}.
+Write three sections with these headings (translated into ${lang}): 1. Chronology of war events in the area, 2. Ordnance probably used, 3. Possible finds and recommendations.
+Rules: use ONLY the facts below; cite events as [E1], [E2] after each statement; say clearly where the bomb types are inferred from typical loads rather than recorded; do not invent raids, numbers or casualties; ground-fighting events (class "ground") name the Allied unit: describe which units fought where and when; mention what the sources do not cover (e.g. German units, artillery fire) if relevant; keep it under 450 words; plain text, no markdown tables.
+EVENTS (id | date | place | force mission | aircraft | class | target | role | summary):
+${lines}
+ORDNANCE MATCHES:
+${ord}
+${SIT.res?.hits?.length?`FRONT LINE: 12th Army Group situation maps show front-line markings within ${SIT.res.c.r} km from ${fmtDate(SIT.days[SIT.res.hits[0]].date)} to ${fmtDate(SIT.days[SIT.res.hits.at(-1)].date)}; mention ground fighting.\n`:""}INDICATORS: ${A.attacks} bombing attacks, ${A.heavyAttacks} by heavy bombers${A.tonnageEvents?`, recorded ${Math.round(A.tHE)} t high explosive and ${Math.round(A.tIC)} t incendiaries`:""}. Do not estimate numbers of duds. Flags: ${A.flags.map(f=>f.t).join("; ")}.`;
+  narrCtl?.abort(); narrCtl=new AbortController();
+  try{
+    await S.sample(prompt,{signal:narrCtl.signal,onText:({text})=>{ S.narrHtml = esc(text).replace(/\[E(\d+)\]/g,'<span class="cite" data-e="$1">[E$1]</span>'); const b=$("#narrbox"); if(b&&S.narrKey===area){ b.hidden=false; b.innerHTML=S.narrHtml; } }});
+    wireCites(evs);
+  }catch(e){ if(e.code!=="cancelled"){ S.narrHtml = esc(e.text?e.text+"\n\n":"") + ({not_granted:"Claude is not allowed for this page.",rate_limited:"Too many requests or usage limit reached; try again later."}[e.code]||"The text could not be written. Try again."); const b=$("#narrbox"); if(b) b.innerHTML=S.narrHtml; } }
+}
+function wireCites(evs){
+  $("#narrbox")?.querySelectorAll(".cite").forEach(c=>c.onclick=()=>{ const e=evs[+c.dataset.e-1]; if(!e) return; const r=document.getElementById("row-"+e._id); r?.scrollIntoView({block:"center"}); r?.classList.add("flash"); setTimeout(()=>r?.classList.remove("flash"),1600); map.setView([e.lat,e.lon],Math.max(map.getZoom(),11)); });
+}
+
+/* ---------- AI chat ---------- */
+S.chat={};
+const CHAT_PRESETS=[["Timeline summary","Write a short timeline summary of the war events in this area, in date order, with [E#] citations."],["Ground fighting","Which units fought in this area, when, and where exactly? Cite [E#]."],["Ordnance risk","Which ordnance is most likely to be found here and why? Separate recorded facts from inferences."],["Next steps","What should a UXO specialist check next for this area (aerial photos by date, archives, etc.)?"],["Client summary (DE)","Schreibe eine kurze Zusammenfassung für einen Kunden auf Deutsch (max. 150 Wörter), mit [E#]-Belegen."]];
+const chatHtml = m => `<div class="cmsg ${m.role}">${m.role==="user"?esc(m.text):esc(m.text).replace(/\[E(\d+)\]/g,'<span class="cite" data-e="$1">[E$1]</span>')}</div>`;
+function wireChat(evs,A,area){
+  const go=async q=>{
+    q=q.trim(); if(!q) return; const log=(S.chat[area]=S.chat[area]||[]); log.push({role:"user",text:q}); log.push({role:"ai",text:"Thinking…"}); render();
+    const lines = evs.slice(0,300).map((e,i)=>`E${i+1} | ${e.date} | ${e.place} | ${e.missionClass} | ${e.targetType||""} | ${e.unit||e.force||""} | ${tonsOf(e)?Math.round(tonsOf(e))+" t":""} ${e.aircraftCount?e.aircraftCount+" "+(e.aircraft||"a/c"):""} | ${e.summary}`).join("\n");
+    const hist = log.slice(0,-2).slice(-6).map(m=>(m.role==="user"?"Q: ":"A: ")+m.text).join("\n");
+    const prompt=`You are an assistant for a UXO (Kampfmittel) desk study. Area: ${area.replace(/&amp;/g,"&")}. Period ${S.from} to ${S.to}.
+Answer the question using ONLY the events and indicators below. Cite events as [E#]. Say clearly when something is not in the data. Keep it concise (under 250 words), plain text. Answer in the language of the question.
+INDICATORS: ${A.attacks} bombing attacks, ${A.heavyAttacks} heavy-bomber attacks, ${Math.round(A.tHE)} t HE recorded, ${A.ground} ground actions by ${A.units.length} units. Likely ordnance: ${A.ord.slice(0,12).map(a=>a.o.designation).join("; ")}.
+EVENTS (${evs.length} total${evs.length>300?", first 300 shown":""}):
+${lines}
+${hist?"EARLIER IN THIS CHAT:\n"+hist+"\n":""}QUESTION: ${q}`;
+    try{ const r=await S.sample(prompt,{maxTokens:1500}); log[log.length-1].text=r.text; }
+    catch(e){ log[log.length-1].text = e.code==="not_granted"?"Only the map owner can use the AI assistant.":e.code==="rate_limited"?"Too many requests; try again later.":"The answer could not be produced."+(e.text?" ("+e.text+")":""); }
+    render(); setTimeout(()=>$("#chatlog")?.lastElementChild?.scrollIntoView({block:"nearest"}),50);
+  };
+  $("#report").querySelectorAll("[data-cp]").forEach(b=>b.onclick=()=>go(CHAT_PRESETS[+b.dataset.cp][1]));
+  const qi=$("#chatq"); if(qi){ $("#chatgo").onclick=()=>go(qi.value); qi.onkeydown=e=>{ if(e.key==="Enter") go(qi.value); }; }
+  $("#chatlog")?.querySelectorAll(".cite").forEach(c=>c.onclick=()=>{ const e=evs[+c.dataset.e-1]; if(!e) return; const r=document.getElementById("row-"+e._id); r?.scrollIntoView({block:"center"}); r?.classList.add("flash"); setTimeout(()=>r?.classList.remove("flash"),1600); map.setView([e.lat,e.lon],Math.max(map.getZoom(),11)); });
+}
+
+/* ---------- reading dates and places without AI (works for everyone) ---------- */
+const MON_ALL={jan:1,january:1,januar:1,"jän":1,feb:2,february:2,februar:2,mar:3,march:3,"märz":3,maerz:3,apr:4,april:4,may:5,mai:5,jun:6,june:6,juni:6,jul:7,july:7,juli:7,aug:8,august:8,sep:9,sept:9,september:9,oct:10,october:10,okt:10,oktober:10,nov:11,november:11,dec:12,december:12,dez:12,dezember:12};
+const MON_RE="(jan(?:uary|uar)?|jän|feb(?:ruary|ruar)?|mar(?:ch)?|märz|maerz|apr(?:il)?|may|mai|june?|juni|july?|juli|aug(?:ust)?|sept?(?:ember)?|oct(?:ober)?|okt(?:ober)?|nov(?:ember)?|dec(?:ember)?|dez(?:ember)?)\\.?";
+const RE_DATES=[
+  [new RegExp("\\b(\\d{1,2})\\.?\\s+"+MON_RE+"\\s+(19[34]\\d)\\b","gi"),m=>[+m[3],MON_ALL[m[2].toLowerCase().replace(".","")]||MON_ALL[m[2].toLowerCase().slice(0,3)],+m[1]]],
+  [new RegExp("\\b"+MON_RE+"\\s+(\\d{1,2}),?\\s+(19[34]\\d)\\b","gi"),m=>[+m[3],MON_ALL[m[1].toLowerCase().replace(".","")]||MON_ALL[m[1].toLowerCase().slice(0,3)],+m[2]]],
+  [/\b(\d{1,2})\.(\d{1,2})\.(19[34]\d|4\d)\b/g,m=>[m[3].length===2?1900+ +m[3]:+m[3],+m[2],+m[1]]],
+  [/\b(19[34]\d)-(\d{2})-(\d{2})\b/g,m=>[+m[1],+m[2],+m[3]]]
+];
+const STOP=new Set("march april may june july august army corps division group force forces air bomber bombers fighter fighters target targets the and with from after before during german germans allied british american town city village area general command enemy north south east west upper lower new great little high district station bridge field port berg hof au mark weiler hausen linden werben heide bahnhof bahn kirche schule mühle muehle wald feld brücke bruecke stadt dorf haus kaserne lager hafen werk insel see markt tal grund neuhaus neudorf schloss burg mitte ost west nord süd sued".split(" "));
+let placeIdx=null;
+function buildPlaceIdx(){
+  placeIdx=new Map();
+  const add=(n,lat,lon,pop)=>{ const k=norm(n).replace(/[^a-z]/g,""); if(k.length<4||STOP.has(norm(n))) return; const l=placeIdx.get(k); if(l) l.push([n,lat,lon,pop||0]); else placeIdx.set(k,[[n,lat,lon,pop||0]]); };
+  (S.villages||[]).forEach(([n,lat,lon,pop])=>{ add(n,lat,lon,pop); const first=n.split(/[ ,(\/]/)[0]; if(first!==n && first.length>3) add(first,lat,lon,pop); });
+  (geo.places||[]).forEach(([n,lat,lon,pop])=>add(n,lat,lon,pop));
+}
+function guessClass(t){ t=t.toLowerCase();
+  if (/b-17|b-24|fortress|liberator|lancaster|halifax|heavy bomber|eighth af|8th af|bomber command/.test(t)) return "heavy";
+  if (/b-26|a-20|a-26|marauder|havoc|invader|mosquito|medium bomber|light bomber/.test(t)) return "medium";
+  if (/p-47|p-38|p-51|fighter-bomber|thunderbolt|typhoon|strafe|dive-bomb/.test(t)) return "fighter-bomber";
+  if (/division|regiment|battalion|infantry|armored|armoured|tank|captured|takes|cleared|attacks? toward|crosses|corps|panzer|troops|fighting|entered|truppen|volkssturm|artillery|shelling|beschuss|einmarsch|kämpfe/.test(t)) return "ground";
+  if (/bomb|raid|angriff|luftangriff|fliegeralarm|attack/.test(t)) return "medium";
+  return "other"; }
+function guessTarget(t){ t=t.toLowerCase();
+  for (const [re,v] of [[/marshalling|rangier|güterbahnhof|yard/,"marshalling yard"],[/airfield|airdrome|aerodrome|flugplatz|fliegerhorst/,"airfield"],[/bridge|brücke/,"bridge"],[/oil|refiner|synthetic|hydrier/,"oil"],[/factory|works|werk|industr|plant/,"industry"],[/rail|bahn|train|zug|station/,"rail"],[/depot|lager|dump/,"depot"],[/harbo|hafen|port\b/,"harbour"],[/troop|position|stellung|division|infantry|tank|panzer/,"troops"],[/barrack|kaserne|hq|headquarters/,"military installation"],[/town|city|stadt|ort|dorf|village|wohn/,"city area"]]) if(re.test(t)) return v;
+  return "other"; }
+async function ruleExtract(id){
+  const src=S.sources[id]; if(!src?.pagesAssetId) return 0;
+  if(!placeIdx) buildPlaceIdx();
+  let pages; try{ pages=await loadPages(src); }catch{ log?.("  page text not available"); return 0; }
+  const out=new Map(); let cur=null; const pad=n=>String(n).padStart(2,"0");
+  pages.forEach((txt,pi)=>{
+    for (const sent of String(txt).replace(/-\n/g,"").split(/\n+|(?<=[a-zäöüß)\]"”][.;!?])\s+(?=[A-ZÄÖÜ0-9])/)){
+      const line=sent.replace(/\s+/g," ").trim(); if(line.length<8) continue;
+      for (const [re,f] of RE_DATES){ re.lastIndex=0; let m; while((m=re.exec(line))){ const [y,mo,d]=f(m); if(y>=1939&&y<=1945&&mo>=1&&mo<=12&&d>=1&&d<=31) cur=`${y}-${pad(mo)}-${pad(d)}`; } }
+      if(!cur) continue;
+      const words=line.match(/[A-ZÄÖÜ][\p{L}\-']+/gu)||[];
+      const seen=new Set();
+      for (let i=0;i<words.length;i++) for (let n=3;n>=1;n--){
+        if(i+n>words.length) continue; const nm=words.slice(i,i+n).join(" "); const k=norm(nm).replace(/[^a-z]/g,"");
+        const c=placeIdx.get(k); if(!c||seen.has(k)) continue; seen.add(k);
+        const best=[...c].sort((a,b)=>b[3]-a[3])[0]; const unc=c.length>1&&best[3]<5000;
+        const key=cur+"|"+best[0]+"|"+(pi+1); if(out.has(key)) break;
+        const cls=guessClass(line);
+        out.set(key,{date:cur,place:best[0],placeAsWritten:nm,lat:best[1],lon:best[2],locPrecision:unc?"uncertain":"town",summary:line.slice(0,320),quote:line.slice(0,220),page:pi+1,sourceId:id,missionClass:cls,targetType:cls==="ground"?"ground combat":guessTarget(line),role:"unknown",auto:true,method:"rule"});
+        break;
+      }
+    }
+  });
+  const items=[...out.values()].slice(0,8000);
+  await KHM.putMany("events", items.map((e,i)=>[`${id}-r-${e.page}-${String(i).padStart(4,"0")}`,e]));
+  await S.db.doc("sources/"+id).update({ruleEvents:items.length, ruleAt:new Date().toISOString()});
+  typeof log==="function" && log(`  ${items.length} events with a date and a place found.`);
+  return items.length;
+}
+async function importBundle(file){
+  const st=$("#modebox"); st.insertAdjacentHTML("beforeend",`<span class="hint" id="bmsg">Reading the bundle…</span>`);
+  try{
+    const txt=await new Response(file.stream().pipeThrough(new DecompressionStream("gzip"))).text(); const b=JSON.parse(txt); let n=0;
+    for (const [sha,v] of Object.entries(b)){
+      const id=Object.keys(S.sources).find(k=>S.sources[k].sha256===sha) || v.sourceId; const src={...(S.sources[id]||{title:v.title,kind:"chronology",sha256:sha})}; delete src._id;
+      const a=await S.assets.upload(new Blob([JSON.stringify({pages:v.pages})],{type:"application/json"}),{type:"application/json"});
+      await S.db.doc("sources/"+id).set({...src,pagesAssetId:a.id,pageCount:v.pages.length,pageFrom:1,pageTo:v.pages.length,needsOcr:false,progress:src.progress||{next:1,lastDate:null,done:false}});
+      n++; $("#bmsg").textContent=`Imported page text for ${n} of ${Object.keys(b).length} documents…`;
+    }
+    $("#bmsg").textContent=`Page text imported for ${n} documents.`;
+  }catch(e){ $("#bmsg").textContent="The bundle could not be read: "+(e.message||e.code||"error"); }
+}
+
+/* ---------- account, visitor mode, filters UI ---------- */
+function renderAuth(){
+  const box=$("#authbox");
+  if (!KHM.configured) box.innerHTML=`<span class="pill" style="color:var(--warn)">Local only · set up config.js</span>`;
+  else if (KHM.isOwner) box.innerHTML=`<span class="pill" style="color:var(--ok)">Owner · ${esc(KHM.email)}</span><button class="btn" id="logout">Sign out</button>`;
+  else box.innerHTML=`<span class="pill">Visitor</span><button class="btn" id="login">Owner sign-in</button>`;
+  $("#logout")&&($("#logout").onclick=()=>KHM.signOut());
+  $("#login")&&($("#login").onclick=()=>{ openModal("#m-login"); $("#li-email").focus(); });
+  const mb=$("#modebox");
+  mb.innerHTML = KHM.isOwner
+    ? `<b>Owner mode</b><span>Documents you add are stored in your private Supabase storage; map points and sources are saved in your database and shown to visitors (files and page texts stay private).</span><label class="btn" style="width:max-content">Import page-text bundle (.json.gz)<input type="file" id="bundle" accept=".gz,.json.gz" hidden></label>`
+    : `<b>Visitor mode</b><span>Add your own chronologies, diaries or reports: they are read and mapped in your browser and stay only in this browser — nothing is uploaded or shared. ${KHM.localCount()?`You have ${KHM.localCount()} items stored here.`:""}</span>${KHM.localCount()?`<button class="btn" id="clearlocal" style="width:max-content">Delete my local data</button>`:""}`;
+  $("#bundle")&&($("#bundle").onchange=e=>e.target.files[0]&&importBundle(e.target.files[0]));
+  $("#clearlocal")&&($("#clearlocal").onclick=()=>confirmDlg("Delete all documents and events you added in this browser?",()=>KHM.clearLocal()));
+  $("#u-readnow-t").textContent = S.sample ? "Read the stored files with Claude right away (one after another; you can pause)" : "Find dates and places in the stored files right away (no AI, in your browser)";
+}
+$("#li-go").onclick=async()=>{ $("#li-msg").textContent="Signing in…"; try{ await KHM.signIn($("#li-email").value.trim(),$("#li-pw").value); }catch(e){ $("#li-msg").textContent=e.message||"Sign-in failed."; } };
+$("#li-pw").onkeydown=e=>{ if(e.key==="Enter") $("#li-go").click(); };
+function initFilters(){
+  const ys=["1939","1940","1941","1942","1943","1944","1945"];
+  $("#yearchips").innerHTML=`<button class="btn chip on" data-yy="">All years</button>`+ys.map(y=>`<button class="btn chip" data-yy="${y}">${y}</button>`).join("");
+  $("#yearchips").querySelectorAll("[data-yy]").forEach(b=>b.onclick=()=>{ const y=b.dataset.yy; $("#yearchips").querySelectorAll(".chip").forEach(x=>x.classList.toggle("on",x===b));
+    S.from=y?y+"-01-01":"1939-09-01"; S.to=y?y+"-12-31":"1945-12-31"; $("#from").value=S.from; $("#to").value=S.to; S.tlYear=null; S.mapYear=null; drawEvents(); render(); countF(); });
+  $("#f-target").innerHTML=`<option value="">All target types</option>`+TARGETS.map(t=>`<option>${esc(t)}</option>`).join("")+`<option>ground combat</option>`;
+  $("#f-army").innerHTML=`<option value="">All armies (ground fighting)</option>`+Object.keys(ARMY_COL).map(a=>`<option>${esc(a)}</option>`).join("");
+  const upd=()=>{ F.q=norm($("#f-q").value.trim()); F.target=$("#f-target").value; F.army=$("#f-army").value; F.minT=+$("#f-tons").value||0; F.unc=$("#f-unc").checked; drawEvents(); renderSoon(); countF(); };
+  let t; $("#f-q").oninput=()=>{ clearTimeout(t); t=setTimeout(upd,250); };
+  ["#f-target","#f-army","#f-tons","#f-unc"].forEach(id=>$(id).onchange=upd);
+  $("#f-mapyear").onchange=()=>{ S.mapYear=$("#f-mapyear").checked?S.tlYear:null; drawEvents(); };
+  $("#f-reset").onclick=()=>{ $("#f-q").value=""; $("#f-target").value=""; $("#f-army").value=""; $("#f-tons").value=0; $("#f-unc").checked=false; S.mapYear=null; S.tlYear=null; $("#yearchips .chip").click(); upd(); };
+}
+function countF(){ const n=S.events.filter(e=>visible(e)).length; $("#f-count").textContent=`${n.toLocaleString("en-GB")} of ${S.events.length.toLocaleString("en-GB")} events shown`; }
+
+/* ---------- timeline + mini map ---------- */
+const dnum = d => Date.UTC(+d.slice(0,4),+d.slice(5,7)-1,+d.slice(8,10))/864e5;
+const MON = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+function evColor(e){ return e.missionClass==="ground" ? armyCol(e.army) : css(CLASSES[e.missionClass]?.v||"--c-other"); }
+function drawTimeline(all){
+  const box=$("#tl"); if(!box||!all.length) return;
+  const years=[...new Set(all.map(e=>e.date.slice(0,4)))];
+  if (S.tlYear && !years.includes(S.tlYear)) S.tlYear=null;
+  const evs = S.tlYear ? all.filter(e=>e.date.startsWith(S.tlYear)) : all;
+  const yb = years.length>1 ? `<div class="row tlyears"><span class="hint">Years:</span><button class="btn${S.tlYear?"":" on"}" data-y="">All</button>${years.map(y=>`<button class="btn${S.tlYear===y?" on":""}" data-y="${y}">${y} <span class="mono hint">${all.filter(e=>e.date.startsWith(y)).length}</span></button>`).join("")}</div>` : "";
+  const W=Math.max(280,box.clientWidth||520), H=128, AX=70, P=14;
+  const days=new Map();
+  for (const e of evs){ const k=(e.missionClass==="ground"?"g":"a")+e.date; const d=days.get(k)||{date:e.date,g:e.missionClass==="ground",list:[]}; d.list.push(e); days.set(k,d); }
+  const t0=dnum(evs[0].date), t1=dnum(evs.at(-1).date), span=Math.max(1,t1-t0), pad=Math.max(2,span*.03);
+  const x = t => P+(t-(t0-pad))/(span+2*pad)*(W-2*P);
+  let g=`<line x1="${P}" x2="${W-P}" y1="${AX}" y2="${AX}" class="tlax"/>`;
+  // ticks: years, months, or days
+  const y0=+evs[0].date.slice(0,4), y1=+evs.at(-1).date.slice(0,4), pxPerDay=(W-2*P)/(span+2*pad);
+  for (let y=y0;y<=y1+1;y++) for (let mo=0;mo<12;mo++){
+    const t=Date.UTC(y,mo,1)/864e5; if (t<t0-pad||t>t1+pad) continue; const X=x(t), yr=mo===0, lab=pxPerDay*30>34||yr||(pxPerDay*30>12&&mo%3===0);
+    g+=`<line x1="${X}" x2="${X}" y1="${AX-(yr?7:4)}" y2="${AX+(yr?7:4)}" class="tltk"/>`;
+    if (lab) g+=`<text x="${Math.min(X+2,W-26)}" y="${H-4}" class="tltx${yr?" yr":""}">${yr||pxPerDay*30<=34?(yr?y:MON[mo]):MON[mo]+(mo===0?"":"")}</text>`;
+  }
+  if (span<62) for (let t=Math.ceil(t0-pad);t<=t1+pad;t+= span<15?1:7){ const d=new Date(t*864e5); g+=`<text x="${x(t)+2}" y="${H-16}" class="tltx">${d.getUTCDate()}.${d.getUTCMonth()+1}.</text>`; }
+  const marks=[...days.values()].sort((a,b)=>a.date.localeCompare(b.date));
+  const lanesA=[], lanesG=[];
+  marks.forEach((d,i)=>{
+    const X=x(dnum(d.date));
+    const mag = d.g ? d.list.length : d.list.reduce((s,e)=>s+(tonsOf(e)>0?tonsOf(e)/8:(e.aircraftCount||ASSUMED[e.missionClass]||4)/4),0);
+    const r = d.g ? Math.min(8,4+Math.sqrt(mag)) : Math.min(11,2.6+Math.sqrt(mag)*.9);
+    const lanes=d.g?lanesG:lanesA; let L=0; while(lanes[L]!=null && X-lanes[L]<r*1.6) L++; lanes[L]=X; L=Math.min(L,3);
+    const Y = d.g ? AX+12+L*12 : AX-6-r-L*13;
+    const dom = d.g ? d.list[0] : ["heavy","medium","fighter-bomber","fighter","unit-move","other"].map(c=>d.list.find(e=>e.missionClass===c)).find(Boolean)||d.list[0];
+    const col = evColor(dom), places=[...new Set(d.list.map(e=>e.place))];
+    const title = `${d.date}: ${d.list.length} ${d.g?"ground action":"air event"}${d.list.length>1?"s":""} — ${places.slice(0,4).join(", ")}${places.length>4?"…":""}`;
+    g += d.g ? `<g class="tlm" data-m="${i}" transform="translate(${X},${Y})"><title>${esc(title)}</title><path d="M0 ${-r} L${r} ${r*.8} L${-r} ${r*.8}Z" fill="${col}"/></g>`
+             : `<g class="tlm" data-m="${i}"><title>${esc(title)}</title><circle cx="${X}" cy="${Y}" r="${r}" fill="${col}"/></g>`;
+  });
+  g += `<text x="${P}" y="12" class="tltx">Air ▲ above the line · Ground fighting below</text>`;
+  box.innerHTML = yb + `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="Timeline of ${evs.length} events">${g}</svg>`;
+  box.querySelectorAll("[data-y]").forEach(b=>b.onclick=()=>{ S.tlYear=b.dataset.y||null; drawTimeline(all); placeMini(all); if ($("#f-mapyear").checked){ S.mapYear=S.tlYear; drawEvents(); } });
+  box.querySelectorAll(".tlm").forEach(el=>el.onclick=()=>{
+    const d=marks[+el.dataset.m]; box.querySelectorAll(".tlm.on").forEach(x=>x.classList.remove("on")); el.classList.add("on");
+    $("#tlinfo").textContent = `${fmtDate(d.date)} · ${d.list.length} event${d.list.length>1?"s":""}: ${[...new Set(d.list.map(e=>e.place))].slice(0,6).join(", ")}`;
+    focusMini(d.list);
+    const r=document.getElementById("row-"+d.list[0]._id); if (r){ const rep=$("#report"); rep.scrollTop = r.offsetTop - rep.querySelector(".head").offsetHeight - 40; d.list.forEach(e=>{ const x=document.getElementById("row-"+e._id); x?.classList.add("flash"); setTimeout(()=>x?.classList.remove("flash"),1600); }); }
+  });
+}
+let mini=null, miniLayer=null, miniSel=null, miniMarks=new Map();
+function ensureMini(){
+  if (mini) return mini;
+  const host=document.createElement("div"); host.id="minimap"; document.body.appendChild(host);
+  mini=L.map(host,{zoomControl:true,attributionControl:false,preferCanvas:true,minZoom:5,maxZoom:15,zoomSnap:.5}).setView([START.lat,START.lon],9);
+  panes.forEach((p,i)=>{mini.createPane(p).style.zIndex = 200+i*10;});
+  const st=style();
+  for (const n of ["countries","urban","lakes","rivers","rail"]) if (geo[n]) L.geoJSON(geo[n],{style:st[n],interactive:false}).addTo(mini);
+  miniLayer=L.layerGroup().addTo(mini);
+  return mini;
+}
+function placeMini(all){
+  const slot=$("#mmslot"); if(!slot||!geo.countries) return;
+  ensureMini(); slot.appendChild(mini.getContainer()); mini.invalidateSize();
+  miniLayer.clearLayers(); miniMarks.clear();
+  const evs = S.tlYear ? all.filter(e=>e.date.startsWith(S.tlYear)) : all;
+  const s=S.sel;
+  if (s.type==="radius") L.circle([s.lat,s.lon],{radius:s.r*1000,color:css("--ink"),weight:1.5,fill:false,dashArray:"5 4",interactive:false}).addTo(miniLayer);
+  else if (s.type==="region" && s.feature) L.geoJSON(s.feature,{style:{color:css("--ink"),weight:1.5,fill:false},interactive:false}).addTo(miniLayer);
+  const idx=new Map(all.map((e,i)=>[e._id,i+1]));
+  const groups=new Map();
+  for (const e of evs.slice(0,3000)){ if(e.lat==null) continue; const k=(e.missionClass==="ground"?"g":"a")+e.lat.toFixed(3)+","+e.lon.toFixed(3); (groups.get(k)||groups.set(k,[]).get(k)).push(e); }
+  const label = groups.size<=60;
+  for (const [k,list] of groups){
+    const e=list[0], ll=[e.lat,e.lon], nums=list.map(x=>"E"+idx.get(x._id)).join(", ");
+    const tip=`${esc(e.place)} · ${list.length>1?list.length+" events · ":""}${esc(list.map(x=>x.date).sort()[0])}${list.length>1?" …":""} · ${nums.length>40?nums.slice(0,40)+"…":nums}`;
+    let m;
+    if (k[0]==="g"){ const last=[...list].sort((a,b)=>b.date.localeCompare(a.date))[0]; m=L.marker(ll,{icon:L.divIcon({className:"gicon",iconSize:[15,15],html:arrowSvg(armyCol(last.army),last.dir,15)}),keyboard:false}); }
+    else {
+      const dom=["heavy","medium","fighter-bomber","fighter","unit-move","other"].find(c=>list.some(x=>x.missionClass===c))||"other", col=css(CLASSES[dom]?.v||"--c-other");
+      const rl=list.filter(x=>RAILT.has(x.targetType)&&x.ori!=null), along=rl.length*2>=list.length;
+      m=L.polygon(blob(ll[0],ll[1],footR(list),hash(k),along?3.2:1,along?rl[0].ori:0),{color:col,weight:1,fillColor:col,fillOpacity:.35});
+      if (label) L.marker(ll,{icon:L.divIcon({className:"mmnum",iconSize:null,html:`<span style="background:${col}">${idx.get(e._id)}</span>`}),keyboard:false,interactive:false}).addTo(miniLayer);
+    }
+    m.bindTooltip(tip,{direction:"top",sticky:true});
+    m.on("click",()=>{ const r=document.getElementById("row-"+e._id); if(r){ r.scrollIntoView({block:"center"}); r.classList.add("flash"); setTimeout(()=>r.classList.remove("flash"),1600);} });
+    m.addTo(miniLayer); list.forEach(x=>miniMarks.set(x._id,m));
+  }
+  const note=$("#mmnote"); if(note) note.textContent = S.tlYear ? `Small map: ${S.tlYear} only (${evs.length} of ${all.length} events)` : `Small map: all ${all.length} events`;
+  if (s.type==="radius") mini.fitBounds(L.latLng(s.lat,s.lon).toBounds(s.r*2200),{animate:false});
+  else if (s.bbox) mini.fitBounds([[s.bbox[1],s.bbox[0]],[s.bbox[3],s.bbox[2]]],{animate:false});
+  else { const bb=L.latLngBounds(evs.filter(e=>e.lat!=null).map(e=>[e.lat,e.lon])); if(bb.isValid()) mini.fitBounds(bb.pad(.1),{animate:false}); }
+}
+function focusMini(list){
+  if(!mini) return; miniSel?.remove();
+  const pts=list.filter(e=>e.lat!=null).map(e=>[e.lat,e.lon]); if(!pts.length) return;
+  miniSel=L.layerGroup(pts.map(p=>L.circleMarker(p,{radius:11,color:css("--ink"),weight:2.5,fill:false,interactive:false}))).addTo(mini);
+  const b=L.latLngBounds(pts); if(!mini.getBounds().contains(b)) mini.fitBounds(b.pad(.5),{maxZoom:12});
+  const m=miniMarks.get(list[0]._id); m?.openTooltip();
+}
+/* ---------- source viewer ---------- */
+function openModal(id){ $(id).hidden=false; $(id).querySelector("[data-close],.btn")?.focus(); }
+document.querySelectorAll("[data-close]").forEach(b=>b.onclick=()=>b.closest(".modal").hidden=true);
+document.addEventListener("keydown",e=>{ if(e.key==="Escape") document.querySelectorAll(".modal").forEach(m=>{ if(m.id==="m-dup") return; if(m.id!=="m-upload"||!running) m.hidden=true; }); });
+async function loadPages(src){
+  if (!src.pagesAssetId) return null;
+  if (pagesCache[src.pagesAssetId]) return pagesCache[src.pagesAssetId];
+  const j = JSON.parse(await (await KHM.blob(src.pagesAssetId)).text()); pagesCache[src.pagesAssetId]=j.pages; return j.pages;
+}
+function highlight(text, quote){
+  const t=esc(text); if(!quote) return t;
+  const words = String(quote).replace(/[^\p{L}\p{N}\s-]/gu," ").split(/\s+/).filter(w=>w.length>2).slice(0,6);
+  if (!words.length) return t;
+  const re = new RegExp(words.map(w=>w.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")).join("[^\\p{L}\\p{N}]+(?:\\S+[^\\p{L}\\p{N}]+){0,3}?"),"iu");
+  const m = text.match(re); if(!m) return t;
+  const a=m.index, b=a+Math.max(m[0].length, quote.length);
+  return esc(text.slice(0,a))+"<mark id=\"hit\">"+esc(text.slice(a,b))+"</mark>"+esc(text.slice(b));
+}
+async function openSource(e, pageOverride){
+  if (!e) return; const src=S.sources[e.sourceId]||{title:e.sourceId};
+  const page = pageOverride || e.page;
+  $("#ms-title").textContent = src.title;
+  const body=$("#ms-body"), foot=$("#ms-foot");
+  let h = `<div class="meta-line">${esc(src.author||"")}</div><div class="find"><b>${esc(e.date)} · ${esc(e.place)}</b><span>${esc(e.summary)}</span>${e.placeAsWritten&&e.placeAsWritten!==e.place?`<span class="hint">Written in source as “${esc(e.placeAsWritten)}”</span>`:""}<span class="meta-line">${classPill(e)}<span class="mono">${e.lat?.toFixed(4)}, ${e.lon?.toFixed(4)} (${esc(e.locPrecision||"")})</span></span></div>`;
+  let links = "";
+  const pv = src.pagesAssetId && page && canOpen(src.pagesAssetId);
+  if (pv){
+    h += `<div class="row"><button class="btn" id="pv-prev">‹ Page ${page-1}</button><span class="lbl">PDF page ${page}</span><button class="btn" id="pv-next">Page ${page+1} ›</button></div><div class="pagetext" id="pv">Loading page…</div>`;
+  } else if (e.quote){ h += `<div class="pagetext"><mark>${esc(e.quote)}</mark></div>`; }
+  const webUrl = e.sourceUrl || (src.baseUrl && e.sourceRef ? src.baseUrl + e.sourceRef + ".html" : null);
+  if (e.sourceId==="thor"){ h += `<div class="find"><span class="mono">${e.tonsHE!=null?`HE ${e.tonsHE} t`:""}${e.tonsIC!=null?` · incendiary ${e.tonsIC} t`:""}${e.tonsFrag!=null?` · fragmentation ${e.tonsFrag} t`:""}</span><span class="hint">Grouped from ${e.nRecords} THOR mission record${e.nRecords>1?"s":""} (WWII_ID ${esc((e.records||[]).join(", "))}${e.nRecords>6?", …":""}). THOR is the US Air Force's database of digitised mission reports; coordinates are the recorded target coordinates.</span></div>`; links += `<a class="btn" href="https://data.world/datamil/world-war-ii-thor-data" target="_blank" rel="noopener">THOR dataset ↗</a>`; }
+  if (e.sourceId==="usarmy-chron"){ h += `<div class="find"><span><b>Unit:</b> ${esc(e.unit||"")}</span><span><b>Army:</b> ${esc(e.army||"")}</span><span class="hint">Condensed from the entry for ${esc(e.date)} in the U.S. Army chronology. Place matched to the German place gazetteer${e.locPrecision==="uncertain"?" — the name fits several places, so check it":""}. Open the chapter and search the page (Ctrl+F) for the place name.</span></div>`; links += `<a class="btn" href="https://ibiblio.org/hyperwar/USA/USA-SS-Chronology/USA-SS-Chronology-${e.chapter||5}.html" target="_blank" rel="noopener">Open chronology ${e.date.slice(0,4)} ↗</a>`; }
+  if (e.auto) h += `<span class="hint">Point placed automatically from the place name in this entry (location from THOR's target list). Check it, and correct it with “Edit event” if needed.</span>`;
+  if (src.web && webUrl) { h += `<span class="hint">${esc(src.note||"")}</span>`; links += `<a class="btn" href="${esc(webUrl)}" target="_blank" rel="noopener">Open ${esc(e.sourceRef||"page")} online ↗</a>`; }
+  if (fileUrl(src,page)) links += `<a class="btn primary" href="${esc(fileUrl(src,page))}" target="_blank" rel="noopener">Open PDF${page?" at page "+page:""} ↗</a>`;
+  else if (src.externalUrl) links += `<a class="btn" href="${esc(src.externalUrl)}${page?"#page="+page:""}" target="_blank" rel="noopener">Open original${page?" at page "+page:""} ↗</a>`;
+  if (S.canWrite) links = `<button class="btn" id="ev-edit">Edit event</button>` + links;
+  body.innerHTML = h; foot.innerHTML = links || `<span class="hint">No link stored for this source.</span>`;
+  openModal("#m-source");
+  if (pv){
+    try{ const pages = await loadPages(src); const txt = pages[page-1]??"(page not stored)"; $("#pv").innerHTML = highlight(txt, page===e.page?e.quote:null); $("#hit")?.scrollIntoView({block:"center"}); }
+    catch{ $("#pv").textContent="The stored page text could not be loaded."; }
+    $("#pv-prev").onclick=()=>page>1&&openSource(e,page-1); $("#pv-next").onclick=()=>openSource(e,page+1);
+  }
+  const eb=$("#ev-edit"); if(eb) eb.onclick=()=>editEvent(e);
+}
+function openOrdSource(o){
+  if(!o) return; const src=S.sources[o.sourceId]||{title:o.sourceId};
+  const fake = {_id:o._id,sourceId:o.sourceId,page:o.page,quote:o.quote,date:"",place:o.designation,summary:o.name+(o.notes?" — "+o.notes:""),missionClass:"other",lat:null,lon:null};
+  if (src.pagesAssetId && o.page) return openSource(fake);
+  $("#ms-title").textContent=src.title;
+  $("#ms-body").innerHTML=`<div class="meta-line">${esc(src.author||"")}</div><div class="find"><b>${esc(o.designation)} — ${esc(o.name)}</b><span>${esc(o.notes||"")}</span></div><span class="hint">${esc(src.note||"")}</span>`;
+  $("#ms-foot").innerHTML = fileUrl(src,o.page)?`<a class="btn primary" href="${esc(fileUrl(src,o.page))}" target="_blank" rel="noopener">Open PDF ↗</a>`:"";
+  openModal("#m-source");
+}
+function editEvent(e){
+  const f=(k,l,t="text")=>`<div class="group"><label for="ed-${k}">${l}</label><input type="${t}" id="ed-${k}" value="${esc(e[k]??"")}" ${t==="number"?'step="any"':""}></div>`;
+  $("#ms-body").innerHTML = `<div class="grid2">${f("date","Date (YYYY-MM-DD)")}${f("place","Place")}${f("lat","Latitude","number")}${f("lon","Longitude","number")}${f("aircraftCount","Aircraft attacking","number")}${f("targetType","Target type")}</div>${f("summary","Summary")}<span class="hint">Target types: ${TARGETS.join(", ")}.</span><span class="hint" id="ed-msg"></span>`;
+  $("#ms-foot").innerHTML = `<button class="btn" id="ed-del">Delete event</button><button class="btn primary" id="ed-save">Save</button>`;
+  $("#ed-save").onclick=async()=>{
+    const v=k=>$("#ed-"+k).value.trim(); const n=k=>v(k)===""?null:Number(v(k));
+    const upd={date:v("date"),place:v("place"),lat:n("lat"),lon:n("lon"),aircraftCount:n("aircraftCount"),targetType:v("targetType"),summary:v("summary"),editedAt:new Date().toISOString()};
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(upd.date)||!(Math.abs(upd.lat)<=90)||!(Math.abs(upd.lon)<=180)){ $("#ed-msg").textContent="Check the date and coordinates."; return; }
+    try{ const base={...e}; delete base._id; delete base._static; await S.db.doc("events/"+e._id).set({...base,...upd}); $("#m-source").hidden=true; }catch{ $("#ed-msg").textContent="Could not save. You may not have edit rights."; }
+  };
+  $("#ed-del").onclick=()=>confirmDlg(`Delete the event “${esc(e.date)} ${esc(e.place)}”? This cannot be undone.`, async()=>{ if(e._static) await S.db.doc("events/"+e._id).set({deleted:true,date:e.date}); else await S.db.doc("events/"+e._id).delete(); $("#m-source").hidden=true; });
+}
+function confirmDlg(html, fn){
+  $("#mc-body").innerHTML=html; $("#m-confirm").hidden=false; $("#mc-yes").focus();
+  $("#mc-no").onclick=()=>$("#m-confirm").hidden=true;
+  $("#mc-yes").onclick=async()=>{ $("#mc-yes").disabled=true; try{ await fn(); }catch{} $("#mc-yes").disabled=false; $("#m-confirm").hidden=true; };
+}
+
+/* ---------- sources & dictionary panes ---------- */
+const canOpen = id => !!id && (KHM.isOwner || String(id).startsWith("local:"));
+function fileUrl(s, page){
+  if (s.parts?.length){ const pt = (page && s.parts.find(p=>page>=p.from&&page<=p.to)) || s.parts[0]; return canOpen(pt.id) ? "#file="+encodeURIComponent(pt.id)+(page?"&page="+(page-pt.from+1):"") : null; }
+  if (s.pdfAssetId) return canOpen(s.pdfAssetId) ? "#file="+encodeURIComponent(s.pdfAssetId)+(page?"&page="+page:"") : null;
+  return null;
+}
+document.addEventListener("click", async ev=>{
+  const a=ev.target.closest('a[href^="#file="]'); if(!a) return; ev.preventDefault();
+  const p=new URLSearchParams(a.getAttribute("href").slice(1)); const w=window.open("","_blank");
+  try{ const u=await KHM.blobUrl(p.get("file")); if(w) w.location=u+(p.get("page")?"#page="+p.get("page"):""); else location.href=u; }
+  catch(e){ w?.close(); alert(e.message==="owner_only"?"Only the owner of this map can open the stored files.":"The file could not be opened."); }
+});
+function dupGroups(){
+  const by={};
+  for (const [id,s] of Object.entries(S.sources)){ const k = s.sha256 || (s.fileName? "name:"+s.fileName : null); if(k) (by[k]=by[k]||[]).push(id); }
+  return Object.values(by).filter(g=>g.length>1).map(g=>g.sort((a,b)=>String(S.sources[a].createdAt).localeCompare(String(S.sources[b].createdAt))));
+}
+async function deleteSource(id){
+  const s=S.sources[id]; if(!s) return;
+  for (const e of S.events.filter(e=>e.sourceId===id)) await S.db.doc("events/"+e._id).delete();
+  for (const o of S.ord.filter(o=>o.sourceId===id)) await S.db.doc("ordnance/"+o._id).delete();
+  const ids=[s.pdfAssetId,s.pagesAssetId,...(s.parts||[]).map(p=>p.id)].filter(Boolean);
+  const shared = new Set(Object.entries(S.sources).filter(([k])=>k!==id).flatMap(([,o])=>[o.pdfAssetId,o.pagesAssetId,...(o.parts||[]).map(p=>p.id)]));
+  if (S.assets) for (const a of ids) if(!shared.has(a)) await S.assets.delete(a).catch(()=>{});
+  await S.db.doc("sources/"+id).delete();
+}
+function renderSources(){
+  const list=Object.entries(S.sources).sort((a,b)=>String(b[1].createdAt).localeCompare(String(a[1].createdAt)));
+  const groups=dupGroups();
+  let h = "";
+  if (groups.length) h += `<div class="find" style="border-left:3px solid var(--warn)"><b>${groups.length} file${groups.length>1?"s are":" is"} stored more than once</b>${groups.map(g=>`<span class="row" style="justify-content:space-between"><span>${esc(S.sources[g[0]].fileName||S.sources[g[0]].title)} <span class="mono hint">× ${g.length}</span></span>${S.canWrite?`<button class="btn" data-dedupe="${esc(g.join(","))}">Keep the oldest, remove ${g.length-1}</button>`:""}</span>`).join("")}</div>`;
+  const kinds={chronology:"Chronologies & reports",ordnance:"Ordnance manuals",reference:"Reference"};
+  h += `<div class="meta-line">${Object.entries(kinds).map(([k,l])=>`<span class="pill">${l}: ${list.filter(([,s])=>s.kind===k).length}</span>`).join("")}</div>`;
+  h += list.map(([id,s])=>{
+    const n = s.kind==="ordnance" ? S.ord.filter(o=>o.sourceId===id).length : S.events.filter(e=>e.sourceId===id).length;
+    const p = s.progress; const pct = p&&s.pageTo ? Math.min(100,Math.round(100*(p.next-(s.pageFrom||1))/Math.max(1,s.pageTo-(s.pageFrom||1)+1))) : null;
+    const url = fileUrl(s);
+    const canRead = S.canWrite && S.sample && s.pagesAssetId && s.kind!=="reference" && !(p&&p.done) && !s.needsOcr;
+    return `<div class="srcitem"><span class="tt">${esc(s.title)}</span>${s.author?`<span class="hint">${esc(s.author)}</span>`:""}
+      <span class="meta-line"><span class="pill">${esc(s.kind)}</span>${s.kind!=="reference"?`<span class="mono">${n} ${s.kind==="ordnance"?"entries":"events"}</span>`:""}${s.pageCount?`<span class="mono">· ${s.pageCount} pages</span>`:""}${s.needsOcr?'<span class="pill" style="color:var(--warn)">scan: needs OCR</span>':""}${s.ocrPages?`<span class="hint">· ${s.ocrPages} pages OCR</span>`:""}</span>
+      ${s.note?`<span class="hint">${esc(s.note)}</span>`:""}
+      ${pct!=null&&p.next>(s.pageFrom||1)?`<div class="bar" title="${pct}% read"><i style="width:${p.done?100:pct}%"></i></div><span class="hint">${p.done?"All selected pages read":`Read up to page ${p.next-1} of ${s.pageFrom||1}–${s.pageTo}`}</span>`:""}
+      <div class="row">${url?`<a class="btn" href="${esc(url)}" target="_blank" rel="noopener">Open PDF ↗</a>`:s.externalUrl?`<a class="btn" href="${esc(s.externalUrl)}" target="_blank" rel="noopener">Original ↗</a>`:""}
+      ${s.pagesAssetId&&canOpen(s.pagesAssetId)&&s.kind!=="reference"?`<button class="btn" data-rule="${esc(id)}" title="Find dates and place names in the text without AI">${s.ruleEvents!=null?`Re-map dates & places (${s.ruleEvents})`:"Map dates & places"}</button>`:""}
+      ${canRead?`<button class="btn primary" data-read="${esc(id)}">${p&&p.next>(s.pageFrom||1)?"Continue reading":"Read with Claude"}</button>`:""}
+      ${S.canWrite?`<button class="btn" data-del="${esc(id)}">Delete</button>`:""}</div></div>`;
+  }).join("") || `<div class="empty">No sources yet.</div>`;
+  $("#srclist").innerHTML = h;
+  $("#srclist").querySelectorAll("[data-read]").forEach(b=>b.onclick=()=>openReadOptions(b.dataset.read));
+  $("#srclist").querySelectorAll("[data-rule]").forEach(b=>b.onclick=async()=>{ b.disabled=true; b.textContent="Reading…"; const n=await ruleExtract(b.dataset.rule); b.textContent=`${n} events found`; });
+  $("#srclist").querySelectorAll("[data-dedupe]").forEach(b=>b.onclick=()=>{ const g=b.dataset.dedupe.split(","); const extra=g.slice(1);
+    confirmDlg(`Remove ${extra.length} extra cop${extra.length>1?"ies":"y"} of “${esc(S.sources[g[0]].fileName||S.sources[g[0]].title)}” with their events? The oldest copy stays.`, async()=>{ for(const id of extra) await deleteSource(id); }); });
+  $("#srclist").querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>{ const id=b.dataset.del, s=S.sources[id];
+    const evs=S.events.filter(e=>e.sourceId===id), ords=S.ord.filter(o=>o.sourceId===id);
+    confirmDlg(`Delete “${esc(s.title)}” with its ${evs.length} events and ${ords.length} ordnance entries and its stored file? This cannot be undone.`, ()=>deleteSource(id)); });
+}
+function renderDict(){
+  const q=norm($("#dq").value);
+  const list=S.ord.filter(o=>!q||norm([o.designation,o.name,o.category,o.filler,o.notes].join(" ")).includes(q));
+  $("#dictlist").innerHTML = list.map(o=>`<div class="ordcard"><b>${esc(o.designation)}</b><span>${esc(o.name)}</span>
+    <span class="meta-line"><span class="pill">${esc(o.category)}</span>${o.weightLb?`<span class="mono">${o.weightLb} lb</span>`:""}<span class="pill lik-${esc(o.likelihood)}">${esc(o.likelihood)}</span></span>
+    <span class="hint">Carried by: ${esc((o.carriers||[]).join(", "))}. Used on: ${esc((o.targets||[]).length>=12?"all target types":(o.targets||[]).join(", "))}.</span>
+    ${o.fuzes&&o.fuzes!=="—"?`<span class="hint">Fuzes: ${esc(o.fuzes)}</span>`:""}<span class="hint">${esc(o.notes||"")}</span><span>${ordSrcChip(o)}</span></div>`).join("") || `<div class="empty">No entries.</div>`;
+  $("#dictlist").querySelectorAll("button.src[data-ord]").forEach(b=>b.onclick=()=>openOrdSource(S.ord.find(o=>o._id===b.dataset.ord)));
+}
+$("#dq").oninput=renderDict;
+
+/* ---------- upload, duplicate check & extraction ---------- */
+const log = t => { const l=$("#u-log"); l.textContent += t+"\n"; l.scrollTop=l.scrollHeight; };
+let running=false, extCtl=null, queue=[], readingId=null;
+function resetUpload(mode){
+  readingId = mode==="read" ? readingId : null;
+  $("#u-pick").hidden = mode==="read"; $("#u-readnow").closest("label").hidden = mode==="read";
+  $("#u-kind").closest(".group").hidden = mode==="read"; $("#u-author").closest(".group").hidden = mode==="read";
+  $("#mu-title").textContent = mode==="read" ? "Read with Claude" : "Add documents";
+  $("#u-go").textContent = mode==="read" ? "Start reading" : "Store and read";
+  $("#u-progress").hidden=true; $("#u-log").textContent=""; $("#u-go").disabled=false;
+}
+$("#addsrc").onclick=()=>{ if(!S.assets||!S.canWrite){ $("#srchint").textContent="Only people who can edit this map can add documents."; return; } resetUpload("add"); queue=[]; renderQueue(); openModal("#m-upload"); };
+function openReadOptions(id){
+  const s=S.sources[id]; readingId=id; resetUpload("read");
+  $("#u-scope").value=s.scope||"Germany"; $("#u-kw").value=s.keywords||""; $("#u-from").value=s.progress?.next||s.pageFrom||1; $("#u-to").value=s.pageTo||s.pageCount||"";
+  $("#u-help").textContent=`“${s.title}”, ${s.pageCount||"?"} pages. Claude reads a few pages at a time and saves one map point per place, with page and quote. Narrow it with keywords or a page range; you can pause and continue later.`;
+  openModal("#m-upload");
+}
+const KIND_GUESS = n => /tm[ _-]?9|op[ _-]?\d|navord|bomb|fuze|ordnance|ammunition|munition|ballistic|eindring/i.test(n) ? "ordnance" : /abbreviation|codename|geographic|strength|fm[ _-]?\d/i.test(n) ? "reference" : "chronology";
+function addFiles(list){
+  for (const f of list){ if(!/\.(pdf|txt|md)$/i.test(f.name)) continue; if(queue.some(q=>q.file.name===f.name&&q.file.size===f.size)) continue; queue.push({file:f,status:"waiting"}); }
+  renderQueue();
+}
+$("#u-file").onchange=()=>addFiles($("#u-file").files);
+$("#u-folder").onchange=()=>addFiles($("#u-folder").files);
+function renderQueue(){
+  $("#u-count").textContent = queue.length ? `${queue.length} file${queue.length>1?"s":""} selected (${(queue.reduce((s,q)=>s+q.file.size,0)/1048576).toFixed(0)} MB)` : "PDF (text or scan), .txt or .md. Each file is checked against what is already stored.";
+  $("#u-queue").innerHTML = queue.slice(0,200).map(q=>`<div class="row" style="justify-content:space-between;font-size:12.5px"><span>${esc(q.file.webkitRelativePath||q.file.name)}</span><span class="mono hint">${esc(q.status)}</span></div>`).join("");
+}
+async function sha256(file){ const b=await crypto.subtle.digest("SHA-256", await file.arrayBuffer()); return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join(""); }
+let dupChoiceAll=null;
+function askDuplicate(file, existingId, exact){
+  if (dupChoiceAll) return Promise.resolve(dupChoiceAll);
+  const s=S.sources[existingId];
+  $("#md-title").textContent = exact ? "This file is already stored" : "A file with this name is already stored";
+  $("#md-body").innerHTML = `<div class="find"><b>${esc(file.name)}</b><span class="hint">${exact?"Identical content (same fingerprint)":"Same name, but the content is different (a newer or edited version?)"}</span></div>
+    <div class="find"><span>Stored as “${esc(s.title)}” on ${esc(String(s.createdAt).slice(0,10))}</span><span class="hint">${s.pageCount||"?"} pages · ${S.events.filter(e=>e.sourceId===existingId).length} events · ${S.ord.filter(o=>o.sourceId===existingId).length} ordnance entries</span></div>
+    <span class="hint"><b>Skip</b> keeps the stored copy and saves the time. <b>Replace</b> removes the stored copy and its events, then stores and reads this file. <b>Keep both</b> stores this file as an extra source.</span>`;
+  $("#md-all").checked=false; $("#m-dup").hidden=false; $('#m-dup [data-dup="skip"]').focus();
+  return new Promise(ok=>{ document.querySelectorAll("#m-dup [data-dup]").forEach(b=>b.onclick=()=>{ const c=b.dataset.dup; if($("#md-all").checked) dupChoiceAll=c; $("#m-dup").hidden=true; ok(c); }); });
+}
+const PDFJS="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/";
+const addScript = src => new Promise((ok,no)=>{ const s=document.createElement("script"); s.src=src; s.onload=ok; s.onerror=()=>no(new Error("Could not load a library.")); document.head.appendChild(s); });
+async function pdfPages(buf){
+  if (!window.pdfjsLib){ await addScript(PDFJS+"pdf.min.js"); await addScript(PDFJS+"pdf.worker.min.js"); }
+  pdfjsLib.GlobalWorkerOptions.workerSrc=PDFJS+"pdf.worker.min.js";
+  const pdf = await pdfjsLib.getDocument({data:buf.slice(0)}).promise;
+  const out=[];
+  for (let i=1;i<=pdf.numPages;i++){
+    const tc = await (await pdf.getPage(i)).getTextContent();
+    out.push(tc.items.map(it=>it.str+(it.hasEOL?"\n":" ")).join("").replace(/[ \t]+\n/g,"\n").replace(/\n{3,}/g,"\n\n").trim());
+    if (i%50===0){ log(`  text: page ${i} of ${pdf.numPages}`); await new Promise(r=>setTimeout(r)); }
+  }
+  return out;
+}
+const PART_MAX = 19*1024*1024;
+async function splitPdf(buf, n){
+  if (!window.PDFLib) await addScript("https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js");
+  const src = await PDFLib.PDFDocument.load(buf,{ignoreEncryption:true});
+  const per0 = Math.max(1, Math.floor(PART_MAX*0.85 / (buf.byteLength/n)));
+  const parts=[]; let start=0;
+  while (start<n){
+    let end=Math.min(n,start+per0), bytes;
+    while (true){
+      const out=await PDFLib.PDFDocument.create();
+      (await out.copyPages(src,[...Array(end-start).keys()].map(i=>i+start))).forEach(p=>out.addPage(p));
+      bytes=await out.save();
+      if (bytes.byteLength<=PART_MAX || end-start===1) break;
+      end = start+Math.max(1,Math.floor((end-start)/2));
+    }
+    parts.push({bytes,from:start+1,to:end}); start=end;
+  }
+  return parts;
+}
+async function storeFile(file, sha, kind, attachId){
+  const buf = await file.arrayBuffer();
+  const isPdf = /\.pdf$/i.test(file.name)||file.type==="application/pdf";
+  let pages;
+  if (isPdf){ log("  reading the text layer…"); pages = await pdfPages(buf); }
+  else { const t=new TextDecoder().decode(buf); pages = t.split(/\f/).length>1 ? t.split(/\f/) : (t.match(/[\s\S]{1,3500}(?=\n|$)/g)||[t]); }
+  const textPages = pages.filter(p=>p.length>=40).length;
+  const needsOcr = isPdf && textPages < pages.length*0.5;
+  const parts=[];
+  if (isPdf){
+    if (file.size<=PART_MAX){ log("  storing the PDF…"); parts.push({id:(await S.assets.upload(file,{type:"application/pdf"})).id,from:1,to:pages.length}); }
+    else {
+      log(`  ${(file.size/1048576).toFixed(0)} MB: splitting into parts under 20 MB…`);
+      const ps = await splitPdf(buf, pages.length);
+      for (const [i,p] of ps.entries()){ log(`  storing part ${i+1} of ${ps.length} (pages ${p.from}–${p.to})…`); parts.push({id:(await S.assets.upload(new Blob([p.bytes],{type:"application/pdf"}),{type:"application/pdf"})).id,from:p.from,to:p.to}); }
+    }
+  }
+  const pagesAssetId=(await S.assets.upload(new Blob([JSON.stringify({pages})],{type:"application/json"}),{type:"application/json"})).id;
+  pagesCache[pagesAssetId]=pages;
+  const id=attachId || ("doc-"+sha.slice(0,12)+(S.sources["doc-"+sha.slice(0,12)]?"-"+Date.now().toString(36):""));
+  const base = attachId ? S.sources[attachId] : null;
+  const from=Math.max(1,+$("#u-from").value||1), to=Math.min(pages.length,+$("#u-to").value||pages.length);
+  const doc={title:base?.title||file.name.replace(/\.[^.]+$/,"").replace(/[_]+/g," "),author:base?.author||$("#u-author").value.trim(),kind,web:false,parts,pagesAssetId,pageCount:pages.length,
+    sha256:sha,fileName:file.name,fileSize:file.size,needsOcr,scope:$("#u-scope").value.trim(),keywords:$("#u-kw").value.trim(),pageFrom:from,pageTo:to,
+    progress:{next:from,lastDate:null,done:false},createdAt:new Date().toISOString()};
+  await S.db.doc("sources/"+id).set(doc);
+  S.sources[id]={...doc,_id:id};
+  log(needsOcr ? "  stored. This is a scan without text: ask Claude in chat to run OCR before reading it." : `  stored (${pages.length} pages).`);
+  return needsOcr ? null : id;
+}
+$("#u-go").onclick=async()=>{
+  if (readingId){
+    const s=S.sources[readingId];
+    const upd={scope:$("#u-scope").value.trim(),keywords:$("#u-kw").value.trim(),pageTo:Math.min(s.pageCount||1e9,+$("#u-to").value||s.pageCount||1e9)};
+    const from=Math.max(1,+$("#u-from").value||1);
+    if (!s.progress || from!==s.progress.next){ upd.progress={next:from,lastDate:s.progress?.lastDate||null,done:false}; upd.pageFrom=from; }
+    $("#u-progress").hidden=false; $("#u-log").textContent="";
+    try{ await S.db.doc("sources/"+readingId).update(upd); Object.assign(S.sources[readingId],upd); await runExtraction(readingId); }catch(e){ log("Stopped: "+(e?.message||e?.code||"error")); }
+    return;
+  }
+  if (!queue.length){ $("#u-progress").hidden=false; $("#u-log").textContent="Choose files or a folder first.\n"; return; }
+  $("#u-go").disabled=true; $("#u-progress").hidden=false; $("#u-log").textContent=""; dupChoiceAll=null;
+  const toRead=[]; let done=0, skipped=0;
+  try{
+    for (const q of queue){
+      if (q.status==="stored"||q.status==="skipped") continue;
+      const f=q.file; q.status="checking"; renderQueue(); log(f.name);
+      const sha = await sha256(f);
+      const same = Object.entries(S.sources).find(([,s])=>s.sha256===sha);
+      const named = !same && Object.entries(S.sources).find(([,s])=>s.fileName===f.name);
+      let choice="new";
+      const placeholder = same && !(same[1].parts?.length || same[1].pdfAssetId);
+      if (placeholder){ choice="attach"; log("  known document: attaching the file to its entry"); }
+      else if (same||named){ choice = await askDuplicate(f,(same||named)[0],!!same); log(`  already stored: ${choice}`); }
+      if (choice==="skip"){ q.status="skipped"; skipped++; renderQueue(); continue; }
+      if (choice==="replace"){ log("  removing the stored copy…"); await deleteSource((same||named)[0]); }
+      q.status="storing"; renderQueue();
+      const kind = $("#u-kind").value==="auto" ? KIND_GUESS(f.name) : $("#u-kind").value;
+      const id = await storeFile(f, sha, choice==="attach" ? same[1].kind||kind : kind, choice==="attach" ? same[0] : null);
+      q.status = id ? "stored" : "stored · needs OCR"; renderQueue(); done++;
+      $("#u-bar").style.width = Math.round(100*(done+skipped)/queue.length)+"%";
+      if (id && kind!=="reference") toRead.push(id);
+    }
+    log(`${done} stored, ${skipped} skipped.`);
+    if ($("#u-readnow").checked && !S.sample) for (const id of toRead){ if (S.sources[id]?.kind==="chronology"){ log(`Finding dates and places in “${S.sources[id].title}”…`); await ruleExtract(id); } }
+    if ($("#u-readnow").checked && S.sample) for (const id of toRead){ if (extCtl?.signal.aborted) break; log(`Reading “${S.sources[id].title}”…`); await runExtraction(id); if (extCtl?.signal.aborted) break; }
+    else if (toRead.length && S.sample) log("Use “Read with Claude” in the Sources tab when you want map points from them.");
+  }catch(e){ log("Stopped: "+(e?.message||e?.code||"unknown error")); }
+  $("#u-go").disabled=false;
+};
+$("#u-stop").onclick=()=>{ extCtl?.abort(); log("Pausing after this batch… you can continue later from the Sources tab."); };
+const MONTHS=["january","february","march","april","may","june","july","august","september","october","november","december"];
+function lastDateIn(txt, prev){
+  let best=prev, re=/(?:^|\n)\s*(\d{1,2})\/(\d{1,2})\/(\d{2})\b|\b(\d{1,2})\s+(january|february|march|april|may|june|july|august|september|october|november|december)\s+(19\d\d)\b|\b(january|february|march|april|may|june|july|august|september|october|november|december)\s+(\d{1,2}),\s*(19\d\d)\b/gi, m;
+  const pad=n=>String(n).padStart(2,"0");
+  while((m=re.exec(txt))){
+    let y,mo,d;
+    if (m[1]){ mo=+m[1]; d=+m[2]; y=1900+(+m[3]); } else if (m[4]){ d=+m[4]; mo=MONTHS.indexOf(m[5].toLowerCase())+1; y=+m[6]; } else { mo=MONTHS.indexOf(m[7].toLowerCase())+1; d=+m[8]; y=+m[9]; }
+    if (y>=1933&&y<=1949&&mo>=1&&mo<=12&&d>=1&&d<=31) best=`${y}-${pad(mo)}-${pad(d)}`;
+  }
+  return best;
+}
+function chunksFrom(pages, src, start, startDate){
+  const kws = (src.keywords||"").split(",").map(s=>norm(s.trim())).filter(Boolean);
+  const out=[]; let cur=null, ld=startDate||null;
+  for (let p=start; p<=src.pageTo; p++){
+    const txt=pages[p-1]||"";
+    const keep = !kws.length || kws.some(k=>norm(txt).includes(k));
+    if (!keep){ if(cur){out.push(cur);cur=null;} ld=lastDateIn(txt,ld); continue; }
+    if (!cur) cur={pages:[],len:0,before:ld};
+    if (cur.len+txt.length>9000 && cur.pages.length){ out.push(cur); cur={pages:[],len:0,before:ld}; }
+    cur.pages.push(p); cur.len+=txt.length; ld=lastDateIn(txt,ld);
+  }
+  if(cur) out.push(cur);
+  return out;
+}
+function prompt(src, chunk, pages, lastDate){
+  const text = chunk.pages.map(p=>`=== PAGE ${p} ===\n${pages[p-1]}`).join("\n\n");
+  if (src.kind==="ordnance") return `You build an ordnance dictionary for an unexploded-ordnance (UXO) desk study from the source "${src.title}". Pages follow, each starting with "=== PAGE n ===".
+Extract every bomb, cluster, incendiary, rocket, fuze or ammunition type described. One object per type:
+{"id": short lowercase slug of the designation, "designation": e.g. "AN-M64A1", "name": e.g. "500 lb General Purpose bomb", "category": one of GP|SAP|AP|fragmentation|cluster|incendiary|fire bomb|rocket|fuze|ammunition|other, "weightLb": number or null, "filler": string, "fuzes": string, "carriers": array from [heavy, medium, fighter-bomber, fighter] that typically carried it (your best judgement if the text does not say), "targets": array from [${TARGETS.map(t=>'"'+t+'"').join(", ")}] it was typically used on, "likelihood": "typical"|"possible"|"rare" (how commonly the USAAF used it in Europe 1944-45), "dudConcern": "high"|"medium"|"low", "notes": one or two factual sentences useful for finding and identifying it today, "quote": verbatim words from the page, max 25, "page": the PAGE number}.
+Reply with only JSON: {"items":[...]}. If the pages describe no ordnance, reply {"items":[]}.
+
+${text}`;
+  return `You extract a geocoded event index from a historical source for an unexploded-ordnance (UXO) desk study. Source: "${src.title}". Pages follow, each starting with "=== PAGE n ===".
+The last date heading seen before these pages: ${lastDate||"unknown"}.
+Scope: only events located in ${src.scope||"any country"}; skip everything else.
+Extract every event that happened at a named place: bombing attacks (primary, secondary, targets of opportunity), fighter-bomber attacks, strafing, sweeps over a named area, air combat near a place, ground fighting, unit moves to airfields or towns, depot explosions. One object per place per event:
+{"date": "YYYY-MM-DD" (from the date headings), "place": modern standard name, "placeAsWritten": spelling in the source, "country": ISO-2, "region": state or province, "lat": number, "lon": number (best estimate for the specific target, e.g. the marshalling yard or airfield, else the town centre), "locPrecision": "site"|"town"|"area"|"uncertain", "force": e.g. "Eighth AF", "mission": e.g. "Mission 801" or "", "aircraft": e.g. "B-17", "aircraftCount": number attacking this target if stated else null, "dispatched": number dispatched if stated else null, "missionClass": one of heavy|medium|fighter-bomber|fighter|recon|transport|unit-move|ground|other, "targetType": one of ${TARGETS.map(t=>'"'+t+'"').join(", ")} (towns hit as targets of opportunity = "city area"), "role": "primary"|"secondary"|"opportunity"|"unknown", "summary": one factual English sentence, "quote": verbatim words from the page supporting it, max 30 words, "page": the PAGE number of the quote}.
+Reply with only JSON: {"events":[...], "lastDate": "YYYY-MM-DD" (the last date heading in these pages, or the one given above)}.
+
+${text}`;
+}
+const okNum = (v,m)=>typeof v==="number"&&isFinite(v)&&Math.abs(v)<=m;
+async function runExtraction(id){
+  if (running) return; const src=S.sources[id]; if(!src) return;
+  if (src.kind==="reference"||src.needsOcr) return;
+  running=true; if(!extCtl||extCtl.signal.aborted) extCtl=new AbortController(); $("#u-stop").hidden=false; $("#u-go").disabled=true; $("#u-progress").hidden=false;
+  try{
+    const pages = await loadPages(src);
+    let p = src.progress||{next:src.pageFrom||1,lastDate:null};
+    const chunks = chunksFrom(pages, src, p.next, p.lastDate);
+    log(`${chunks.length} batches to read${src.keywords?" (pages filtered by keywords)":""}.`);
+    let total = 0;
+    for (let i=0;i<chunks.length;i++){
+      if (extCtl.signal.aborted) break;
+      const c=chunks[i];
+      $("#u-bar").style.width = Math.round(100*(c.pages[0]-(src.pageFrom||1))/Math.max(1,src.pageTo-(src.pageFrom||1)+1))+"%";
+      log(`Pages ${c.pages[0]}–${c.pages.at(-1)}: asking Claude…`);
+      let r;
+      try{ r = await S.sample.json(prompt(src,c,pages,c.before||p.lastDate),{signal:extCtl.signal,modelTier:"default"}); }
+      catch(e){
+        if (e.code==="cancelled") break;
+        if (e.code==="invalid_json"){ log("  Could not read the answer for these pages; skipping them."); }
+        else { log("  Stopped: "+({rate_limited:"usage or rate limit reached — continue later",not_granted:"Claude was not allowed for this page",prompt_too_large:"pages too long"}[e.code]||e.code)); break; }
+      }
+      let n=0;
+      if (r && src.kind==="ordnance"){
+        for (const [k,o] of (r.items||[]).entries()){
+          if (!o?.designation) continue;
+          const oid = (id+"-"+String(o.id||o.designation).toLowerCase().replace(/[^a-z0-9]+/g,"-")).slice(0,120);
+          await S.db.doc("ordnance/"+oid).set({designation:String(o.designation),name:String(o.name||""),category:String(o.category||"other"),weightLb:okNum(o.weightLb,1e5)?o.weightLb:null,filler:String(o.filler||""),fuzes:String(o.fuzes||""),carriers:Array.isArray(o.carriers)?o.carriers.map(String):[],targets:Array.isArray(o.targets)?o.targets.map(String):[],likelihood:["typical","possible","rare"].includes(o.likelihood)?o.likelihood:"possible",dudConcern:["high","medium","low"].includes(o.dudConcern)?o.dudConcern:"medium",notes:String(o.notes||""),quote:o.quote?String(o.quote).slice(0,300):null,page:Number.isInteger(o.page)?o.page:c.pages[0],sourceId:id});
+          n++;
+        }
+      } else if (r){
+        for (const [k,e] of (r.events||[]).entries()){
+          if (!e || !/^\d{4}-\d{2}-\d{2}$/.test(e.date||"") || !okNum(e.lat,90) || !okNum(e.lon,180)) continue;
+          const pg = Number.isInteger(e.page)?e.page:c.pages[0];
+          await S.db.doc(`events/${id}-p${pg}-${String(k).padStart(3,"0")}-${c.pages[0]}`).set({date:e.date,place:String(e.place||e.placeAsWritten||"?"),placeAsWritten:String(e.placeAsWritten||""),lat:e.lat,lon:e.lon,locPrecision:String(e.locPrecision||"town"),country:String(e.country||""),region:String(e.region||""),force:String(e.force||""),mission:String(e.mission||""),aircraft:String(e.aircraft||""),aircraftCount:okNum(e.aircraftCount,1e4)?e.aircraftCount:null,dispatched:okNum(e.dispatched,1e4)?e.dispatched:null,missionClass:CLASSES[e.missionClass]?e.missionClass:"other",targetType:TARGETS.includes(e.targetType)?e.targetType:"other",role:String(e.role||"unknown"),summary:String(e.summary||"").slice(0,500),quote:e.quote?String(e.quote).slice(0,400):null,page:pg,sourceId:id,createdBy:"extraction"});
+          n++;
+        }
+        p.lastDate = lastDateIn(c.pages.map(q=>pages[q-1]).join("\n"), /^\d{4}-\d{2}-\d{2}$/.test(r.lastDate||"")?r.lastDate:p.lastDate);
+      }
+      total+=n; log(`  ${n} ${src.kind==="ordnance"?"entries":"events"} saved.`);
+      p = {next:c.pages.at(-1)+1, lastDate:p.lastDate, done:i===chunks.length-1};
+      await S.db.doc("sources/"+id).update({progress:p});
+      src.progress=p;
+    }
+    if (!chunks.length){ p={...p,next:src.pageTo+1,done:true}; await S.db.doc("sources/"+id).update({progress:p}); }
+    log(p.done?`Finished. ${total} saved in this run.`:`Paused at page ${p.next}. ${total} saved in this run.`);
+    $("#u-bar").style.width = p.done?"100%":$("#u-bar").style.width;
+  }catch(e){ log("Stopped: "+(e?.message||e?.code||"error")); }
+  finally{ running=false; $("#u-stop").hidden=true; $("#u-go").disabled=false; }
+}
+
+/* ---------- situation maps (12th Army Group, Jun 1944 – May 1945) ---------- */
+const SIT={days:[],groups:[],i:0,ink:null,scan:null,cache:new Map(),key:null,res:null,tok:0};
+map.createPane("sitScan").style.zIndex=245; map.getPane("sitScan").style.pointerEvents="none";
+map.createPane("sitInk").style.zIndex=390; map.getPane("sitInk").style.pointerEvents="none";
+const MONS=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const fmtDate = d => { const [y,m,dd]=d.split("-"); return `${+dd} ${MONS[+m-1]} ${y}`; };
+const sitUrl = (d,ink) => `sit/maps/${d.d}${ink?"_ink":""}.webp`;
+async function loadSit(){
+  try{ const d=await fetch("sit/data.json").then(r=>r.json()); SIT.days=d.days.map(x=>({...x,date:"19"+x.d})); SIT.groups=d.groups||[];
+    $("#sit-i").max=SIT.days.length-1; showSit(0,false); renderSoon(); }
+  catch{ $("#sitctl").hidden=true; }
+}
+function showSit(i,pan){
+  if(!SIT.days.length) return;
+  i=Math.max(0,Math.min(SIT.days.length-1,i)); SIT.i=i; const d=SIT.days[i];
+  $("#sit-i").value=i; $("#sit-date").textContent=fmtDate(d.date);
+  const g=SIT.groups[d.g]; $("#sit-sheet").textContent = g ? `Sheet ${g.id}: ${g.name} · ${g.scale} · ${g.acc} typical fit` : "";
+  const b=L.latLngBounds(d.b), on=$("#sit-on").checked;
+  if (on){ if(!SIT.ink) SIT.ink=L.imageOverlay(sitUrl(d,true),b,{pane:"sitInk",interactive:false,opacity:.95}).addTo(map); else SIT.ink.setUrl(sitUrl(d,true)).setBounds(b); }
+  else if (SIT.ink){ map.removeLayer(SIT.ink); SIT.ink=null; }
+  if (on && $("#sit-scan").checked){ if(!SIT.scan) SIT.scan=L.imageOverlay(sitUrl(d,false),b,{pane:"sitScan",interactive:false,opacity:.6}).addTo(map); else SIT.scan.setUrl(sitUrl(d,false)).setBounds(b); }
+  else if (SIT.scan){ map.removeLayer(SIT.scan); SIT.scan=null; }
+  if (pan && on && !map.getBounds().intersects(b)) map.fitBounds(b);
+}
+$("#sit-i").oninput=()=>showSit(+$("#sit-i").value,false);
+$("#sit-prev").onclick=()=>showSit(SIT.i-1,false); $("#sit-next").onclick=()=>showSit(SIT.i+1,false);
+$("#sit-on").onchange=()=>showSit(SIT.i,true); $("#sit-scan").onchange=()=>showSit(SIT.i,false);
+function selCenter(){
+  const s=S.sel;
+  if (s.type==="radius") return {lat:s.lat,lon:s.lon,r:s.r};
+  if (s.type==="region"){ const b=s.bbox, lat=(b[1]+b[3])/2, lon=(b[0]+b[2])/2; return {lat,lon,r:Math.round(Math.min(30,Math.max(3,km(b[1],lon,b[3],lon)/2*0.8)))}; }
+  const c=map.getCenter(); return {lat:c.lat,lon:c.lng,r:20};
+}
+const merc = lat => Math.log(Math.tan(Math.PI/4+lat*Math.PI/360));
+const loadImage = src => new Promise((ok,no)=>{ const im=new Image(); im.onload=()=>ok(im); im.onerror=no; im.src=src; });
+async function frontHits(c){
+  const cov=[], hits=[];
+  for (let i=0;i<SIT.days.length;i++){
+    const d=SIT.days[i], [[la1,lo1],[la2,lo2]]=d.b;
+    if (c.lat<la1||c.lat>la2||c.lon<lo1||c.lon>lo2) continue;
+    cov.push(i);
+    const key=`${i}|${c.lat.toFixed(3)}|${c.lon.toFixed(3)}|${c.r}`;
+    let n=SIT.cache.get(key);
+    if (n===undefined){
+      n=0;
+      try{
+        const im=await loadImage(sitUrl(d,true)), W=im.naturalWidth, H=im.naturalHeight;
+        const x=(c.lon-lo1)/(lo2-lo1)*W, y=(merc(la2)-merc(c.lat))/(merc(la2)-merc(la1))*H;
+        const rx=c.r/(111.32*Math.cos(c.lat*Math.PI/180))/(lo2-lo1)*W, ry=(merc(c.lat+c.r/110.57)-merc(c.lat))/(merc(la2)-merc(la1))*H;
+        const x0=Math.max(0,Math.floor(x-rx)), y0=Math.max(0,Math.floor(y-ry)), w=Math.min(W,Math.ceil(x+rx))-x0, h=Math.min(H,Math.ceil(y+ry))-y0;
+        if (w>0&&h>0){
+          const cv=document.createElement("canvas"); cv.width=w; cv.height=h;
+          const cx=cv.getContext("2d",{willReadFrequently:true}); cx.drawImage(im,x0,y0,w,h,0,0,w,h);
+          const px=cx.getImageData(0,0,w,h).data;
+          for (let yy=0;yy<h;yy++) for (let xx=0;xx<w;xx++){ const dx=(x0+xx-x)/rx, dy=(y0+yy-y)/ry; if(dx*dx+dy*dy<=1 && px[(yy*w+xx)*4+3]>120) n++; }
+        }
+      }catch{}
+      SIT.cache.set(key,n);
+    }
+    if (n>15) hits.push(i);
+  }
+  return {cov,hits,c};
+}
+async function fillFront(){
+  const box=$("#frontbox"); if(!box) return;
+  if (!SIT.days.length){ box.innerHTML=""; return; }
+  const c=selCenter(), key=`${c.lat.toFixed(3)}|${c.lon.toFixed(3)}|${c.r}`;
+  if (SIT.key!==key){ box.innerHTML=`<div class="find"><span class="hint">Checking the 12th Army Group situation maps for this area…</span></div>`;
+    const tok=++SIT.tok; const res=await frontHits(c); if(tok!==SIT.tok) return; SIT.key=key; SIT.res=res; }
+  const r=SIT.res, b=$("#frontbox"); if(!b) return;
+  let h=`<div class="find" style="border-left:3px solid #c81e27"><b>Front line · ground fighting</b>`;
+  if (!r.cov.length) h+=`<span>No situation map covers this point. The 98 sheets cover France, the Low Countries and western and southern Germany, June 1944 – May 1945.</span>`;
+  else if (!r.hits.length) h+=`<span>${r.cov.length} situation maps cover this point (${fmtDate(SIT.days[r.cov[0]].date)} – ${fmtDate(SIT.days[r.cov.at(-1)].date)}), but none shows front-line markings within ${r.c.r} km.</span>`;
+  else {
+    const f=SIT.days[r.hits[0]], l=SIT.days[r.hits.at(-1)];
+    h+=`<span>Front-line markings within ${r.c.r} km appear on ${r.hits.length} of the ${r.cov.length} situation maps covering this point: first <b>${fmtDate(f.date)}</b>, last <b>${fmtDate(l.date)}</b>. Expect munitions from ground fighting (artillery, mortar, infantry, anti-tank) of both sides around these dates, which the air-war sources do not cover.</span>
+      <span class="chips">${r.hits.map(i=>`<button class="src" data-sit="${i}">${fmtDate(SIT.days[i].date)}</button>`).join("")}</span>`;
+    const g=f.ground||{};
+    const notes=[g.u&&`<b>12th Army Group:</b> ${esc(g.u)}`, g.b&&`<b>21 Army Group:</b> ${esc(g.b)}`, g.s&&`<b>6th Army Group:</b> ${esc(g.s)}`].filter(Boolean);
+    if (notes.length) h+=`<span class="hint">Ground situation on ${fmtDate(f.date)} (US Army chronology, M. H. Williams):</span>${notes.map(n=>`<span style="font-size:13px">${n}</span>`).join("")}`;
+    h+=`<span class="hint">Markings are read from your traced front-line layer (front line, boundaries and unit symbols), with a typical map fit of 0.5–3 km. Click a date to show that map.</span>`;
+  }
+  h+=`</div>`; b.innerHTML=h;
+  b.querySelectorAll("[data-sit]").forEach(x=>x.onclick=()=>{ $("#sit-on").checked=true; showSit(+x.dataset.sit,true); });
+}
+loadSit();
+
+/* ---------- data ---------- */
+S.dbEvents=[]; S.staticEvents=[]; S.hiddenSources=new Set();
+async function loadStatic(){
+  try{
+    const idx = await fetch("data/index.json").then(r=>r.json());
+    const sets = await Promise.all(idx.files.map(f=>fetch(f).then(r=>r.json()).catch(()=>null)));
+    S.staticEvents = sets.filter(Boolean).flatMap(d=>d.events.map(e=>({...e,_id:e.id,_static:true})));
+  }catch{ S.staticEvents=[]; }
+  S.loaded.static=true; mergeEvents();
+}
+function mergeEvents(){
+  const db = new Map(S.dbEvents.map(e=>[e._id,e]));
+  const out = [];
+  for (const e of S.staticEvents){ const o=db.get(e._id); if(o){ db.delete(e._id); if(!o.deleted) out.push({...e,...o,_static:true}); } else out.push(e); }
+  for (const e of db.values()) if(!e.deleted) out.push(e);
+  S.events = out;
+  S.loaded.events = S.loaded.db && S.loaded.static;
+  typeof countF==="function" && $("#f-count") && countF();
+  buildGazetteer(); drawEvents(); renderSoon(); renderSources(); renderSrcFilter();
+}
+function renderSrcFilter(){
+  const counts={}; for (const e of S.events) counts[e.sourceId]=(counts[e.sourceId]||0)+1;
+  const ids=Object.keys(counts).sort((a,b)=>counts[b]-counts[a]);
+  $("#srcfilter").innerHTML = ids.map(id=>{ const s=S.sources[id]; return `<label class="chk"><input type="checkbox" data-sf="${esc(id)}" ${S.hiddenSources.has(id)?"":"checked"}><span>${esc(s?s.title:id)} <span class="mono hint">${counts[id].toLocaleString("en-GB")}</span></span></label>`; }).join("") || `<span class="hint">No events yet.</span>`;
+  $("#srcfilter").querySelectorAll("input").forEach(i=>i.onchange=()=>{ i.checked?S.hiddenSources.delete(i.dataset.sf):S.hiddenSources.add(i.dataset.sf); drawEvents(); render(); });
+}
+function subscribe(col, onDocs){
+  let done=false; const t=setTimeout(()=>{ if(!done) $("#status").textContent="The stored data can’t be reached yet."; },10000);
+  S.db.collection(col).onSnapshot(snap=>{ if(!snap.metadata.fromCache){done=true;clearTimeout(t);} onDocs(snap.docs.map(d=>({...d.data(),_id:d.id}))); },
+    err=>{ done=true; clearTimeout(t); $("#status").textContent="Data unavailable ("+err.code+")."; });
+}
+(async function init(){
+  setMode("radius"); $("#mapmode").hidden=true;
+  loadBase().then(()=>{ drawSelection(); render(); });
+  render();
+  const db = await claude.use("db");
+  if (!db){ S.loaded.db=true; loadStatic(); $("#status").textContent="Sign in to load the stored sources."; return; }
+  S.db=db;
+  const user = await claude.use("user");
+  try{ const c = user ? await user.can("data.write") : null; S.canWrite = c!==false; }catch{ S.canWrite=true; }
+  subscribe("events", docs=>{ S.dbEvents=docs; S.loaded.db=true; mergeEvents(); });
+  loadStatic();
+  subscribe("sources", docs=>{ S.sources=Object.fromEntries(docs.map(d=>[d._id,d])); renderSources(); renderSoon(); });
+  subscribe("ordnance", docs=>{ S.ord=docs; renderDict(); renderSources(); renderSoon(); });
+  claude.use("sample").then(s=>{ S.sample=s; renderSoon(); renderSources(); renderAuth(); });
+  renderAuth(); initFilters();
+  claude.use("assets").then(a=>{ S.assets=a; if(!a) $("#srchint").textContent=""; });
+})();
+</script>
+</body>
+</html>
