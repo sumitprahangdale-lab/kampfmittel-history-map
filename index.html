@@ -746,7 +746,11 @@ a.btn.primary{color:var(--panel)}
 #minimap{height:230px;border-radius:4px;border:1px solid var(--line);background:var(--sea)}#mmslot:empty{display:none}
 .mmnum span{display:inline-block;min-width:16px;padding:0 3px;border-radius:8px;color:#fff;font:600 10px/16px var(--f-body);text-align:center;border:1px solid #fff;transform:translate(-50%,-50%)}
 body.osm .lbl-place{display:none}#mapstyle .btn.on{background:var(--ink);color:var(--panel)}
-.maplegend.senslg{left:auto;right:10px;bottom:28px;max-width:240px}
+.maplegend.senslg{left:auto;right:10px;bottom:28px;max-width:240px}.sgrad{height:10px;border-radius:5px;background:linear-gradient(90deg,#fff3b0,#ffd166,#f4a261,#e85d04,#9d0208,#6a040f)}
+.panel{border:1px solid var(--line);border-radius:6px;background:var(--panel)}.panel>summary{list-style:none;display:flex;align-items:center;gap:6px;padding:8px 10px;cursor:pointer;font-family:var(--f-display);font-size:15px;letter-spacing:.04em;text-transform:uppercase;user-select:none}.panel>summary::-webkit-details-marker{display:none}.panel>summary .chev{transition:transform .15s;display:inline-block;color:var(--muted)}.panel[open]>summary .chev{transform:rotate(90deg)}.panel>summary .mv{margin-left:auto;display:flex;gap:2px}.panel>summary .mv button,.sec .mv button{border:1px solid var(--line);background:var(--bg);border-radius:3px;width:22px;height:22px;line-height:18px;cursor:pointer;color:var(--muted);padding:0}.panel>.pbody{padding:2px 10px 10px;display:flex;flex-direction:column;gap:8px}.panel>.pbody>.group>.lbl:first-child,.panel>.pbody>.group>label:first-child{display:none}
+.sec>h3{cursor:pointer;user-select:none}.sec>h3 .mv{margin-left:auto;display:flex;gap:2px}.sec>h3 .chev{color:var(--muted);transition:transform .15s;display:inline-block}.sec:not(.collapsed)>h3 .chev{transform:rotate(90deg)}.sec.collapsed>*:not(h3){display:none!important}
+.pv-head{display:flex;flex-wrap:wrap;gap:6px;align-items:center}.pv-loc{font-family:var(--f-mono);font-size:12px;background:color-mix(in srgb,var(--sel) 14%,transparent);color:var(--sel);padding:2px 8px;border-radius:3px}
+.lines{font-family:var(--f-mono);font-size:12.5px;line-height:1.55;background:var(--bg);border:1px solid var(--line);border-radius:4px;max-height:55vh;overflow:auto;padding:6px 0}.lines .ln{display:grid;grid-template-columns:44px 1fr;gap:8px;padding:0 10px 0 0;white-space:pre-wrap}.lines .ln i{font-style:normal;color:var(--muted);text-align:right;user-select:none}.lines .ln.hit{background:color-mix(in srgb,var(--warn) 14%,transparent)}.lines .gap{color:var(--muted);text-align:center;font-size:11px;padding:2px}.lines .pbreak{height:8px}
 .authbox{display:flex;gap:6px;align-items:center;margin-left:8px}.chip{padding:2px 8px;font-size:12px}.chip.on{background:var(--ink);color:var(--panel)}.yearchips{flex-wrap:wrap;gap:4px}
 .chat{margin:12px 16px 0;padding:10px;border:1px solid var(--line);border-radius:6px;display:flex;flex-direction:column;gap:6px;background:var(--bg)}
 #chatlog{display:flex;flex-direction:column;gap:6px;max-height:320px;overflow:auto}.cmsg{padding:6px 9px;border-radius:6px;white-space:pre-wrap;font-size:13px}.cmsg.user{align-self:flex-end;background:var(--ink);color:var(--panel);max-width:85%}.cmsg.ai{background:var(--panel);border:1px solid var(--line)}
@@ -910,10 +914,10 @@ mark{background:color-mix(in srgb,var(--warn) 40%,transparent);color:inherit;pad
     </div>
     <div class="pane" id="p-src" hidden>
       <div class="row"><button class="btn primary" id="addsrc">Add documents</button><span class="hint" id="srchint"></span></div>
-      <div class="find" id="modebox"></div>
+      <div class="find" id="modebox" data-title="Mode &amp; imports"></div>
       <div class="group"><label for="txtq">Search the text of all documents</label><input type="text" id="txtq" placeholder="e.g. Blindgänger, Heilbronn, 4th Armd, Flak"><div id="txtres" class="group"></div></div>
-      <div class="group" id="contribs"></div>
-      <div class="group" id="srclist"></div>
+      <div class="group" id="contribs" data-title="Visitor contributions"></div>
+      <div class="group" id="srclist" data-title="Documents"></div>
     </div>
     <div class="pane" id="p-dict" hidden>
       <span class="hint">Every bomb, fuze or round the report can match. Entries come from the ordnance sources you add; each lists which aircraft classes carried it and which target types it was used on.</span>
@@ -1010,6 +1014,7 @@ mark{background:color-mix(in srgb,var(--warn) 40%,transparent);color:inherit;pad
 <script src="config.js"></script>
 <script src="backend.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+<script src="vendor/leaflet-heat.js"></script>
 <script>
 "use strict";
 /* ---------- constants ---------- */
@@ -1491,7 +1496,7 @@ function render(){
   h += sensSection();
   $("#report").innerHTML = h;
   wireSrcButtons($("#report"));
-  wireSens();
+  wireSens(); applySecUI();
   $("#report").querySelectorAll("tr.main").forEach(tr=>{ const t=()=>{ const d=$(`#report tr[data-d="${tr.dataset.i}"]`); d.hidden=!d.hidden; }; tr.onclick=t; tr.onkeydown=e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();t();}}; });
   $("#report").querySelectorAll("button.src[data-ord]").forEach(b=>b.onclick=()=>openOrdSource(S.ord.find(o=>o._id===b.dataset.ord)));
   $("#copyrep").onclick=()=>copyReport(evs,A,areaTxt);
@@ -1565,18 +1570,31 @@ function computeSens(){
   }
   SENS.cells=cells; return cells;
 }
-async function drawSens(){
-  SENS.layer.clearLayers();
-  if (!S.layers.sens){ map.removeLayer(SENS.layer); $("#senslegend").hidden=true; return; }
-  await loadSens(); const cells=computeSens(); const G=SENS.grid;
-  for (const c of cells.values()){ if(c.score<0.0001) continue; const [,lbl,col]=sensClass(c.score);
-    const r=L.rectangle([[c.i*G.dlat,c.j*G.dlon],[(c.i+1)*G.dlat,(c.j+1)*G.dlon]],{stroke:false,fillColor:col,fillOpacity:.5,bubblingMouseEvents:true});
-    r.bindTooltip(`<b>${lbl}</b> sensitivity · ${(c.score*100).toFixed(0)}/100<br>${c.n?`${c.n} reported finds`:c.inCov?"no reported finds":"outside the find-report area"}${c.n&&c.cls.bomb_large?` (${c.cls.bomb_large} large bombs)`:""}<br>${c.attacks} air attacks${c.tons?` · ~${fmt(c.tons)} t`:""} · ${c.ground} ground actions<br><i>Approximate – treat with caution</i>`,{sticky:true});
-    r.addTo(SENS.layer); }
-  SENS.layer.addTo(map);
-  $("#senslegend").hidden=false;
-  $("#senslegend").innerHTML=`<span class="lbl">Sensitivity</span>`+SENS_CLASSES.map(c=>`<span class="row" style="gap:6px"><span class="dot" style="background:${c[2]};border-radius:2px"></span>${c[1]}</span>`).join("")+`<span class="hint" style="max-width:210px">2 km cells. Find reports (${G.total.toLocaleString("de-DE")}, Bavaria) 50 %, air attacks 30 %, ground fighting 20 %. Approximate, based on the find report – not precise, treat with caution.</span>`;
+const SENS_GRAD={0.15:"#fff3b0",0.3:"#ffd166",0.5:"#f4a261",0.7:"#e85d04",0.9:"#9d0208",1:"#6a040f"};
+let sensHeat=null, sensTip=null;
+function sensRadius(){ // ~2.6 km in screen pixels at the current zoom
+  const c=map.getCenter(), p1=map.latLngToContainerPoint(c), p2=map.latLngToContainerPoint([c.lat+0.0235,c.lng]); return Math.max(6,Math.min(80,Math.abs(p2.y-p1.y)));
 }
+async function drawSens(){
+  if (sensHeat){ map.removeLayer(sensHeat); sensHeat=null; }
+  if (!S.layers.sens){ $("#senslegend").hidden=true; return; }
+  await loadSens(); const cells=computeSens(); const G=SENS.grid;
+  const pts=[...cells.values()].filter(c=>c.score>0.02).map(c=>[c.lat,c.lon,c.score]);
+  const r=sensRadius();
+  sensHeat=L.heatLayer(pts,{radius:r,blur:r*0.9,max:1.6,minOpacity:0.08,maxZoom:map.getZoom(),gradient:SENS_GRAD}).addTo(map);
+  $("#senslegend").hidden=false;
+  $("#senslegend").innerHTML=`<span class="lbl">Sensitivity</span><div class="sgrad"></div><div class="row" style="justify-content:space-between"><span class="hint">very low</span><span class="hint">medium</span><span class="hint">very high</span></div><span class="hint">Find reports (${G.total.toLocaleString("de-DE")}, Bavaria) 50 %, air attacks 30 %, ground fighting 20 %. Hover the map for values. Approximate, based on the find report – not precise, treat with caution.</span>`;
+}
+map.on("zoomend",()=>{ if(S.layers.sens&&sensHeat){ const r=sensRadius(); sensHeat.setOptions({radius:r,blur:r*0.9,maxZoom:map.getZoom()}); } });
+map.on("mousemove",e=>{
+  if (!S.layers.sens||!SENS.cells||!SENS.grid){ sensTip&&map.closeTooltip(sensTip); return; }
+  const G=SENS.grid, c=SENS.cells.get(Math.floor(e.latlng.lat/G.dlat)+","+Math.floor(e.latlng.lng/G.dlon));
+  if (!c||c.score<0.02){ sensTip&&map.closeTooltip(sensTip); return; }
+  const [,lbl]=sensClass(c.score);
+  sensTip=sensTip||L.tooltip({direction:"top",offset:[0,-8],className:"senstip"});
+  sensTip.setLatLng(e.latlng).setContent(`<b>${lbl}</b> · ${(c.score*100).toFixed(0)}/100<br>${c.n?`${c.n} reported finds`:c.inCov?"no reported finds":"outside find-report area"} · ${c.attacks} air attacks · ${c.ground} ground actions`);
+  if(!map.hasLayer(sensTip)) sensTip.addTo(map);
+});
 async function loadFindPts(){
   if (SENS.pts) return SENS.pts; const src=S.sources["finds-report"];
   if (!src?.findsAssetId || !canOpen(src.findsAssetId)) return null;
@@ -1630,6 +1648,42 @@ function sensSection(){
 function wireSens(){ const c=$("#sens-on"); if(c) c.onchange=()=>{ S.layers.sens=c.checked; const l=document.querySelector('[data-ly="sens"]'); if(l) l.checked=c.checked; drawSens(); }; }
 loadSens().then(()=>{ computeSens(); renderSoon(); });
 
+/* ---------- collapsible, re-orderable panels ---------- */
+const UIST=(()=>{ try{ return JSON.parse(localStorage.getItem("khm-ui")||"{}"); }catch{ return {}; } })();
+const saveUI=()=>{ try{ localStorage.setItem("khm-ui",JSON.stringify(UIST)); }catch{} };
+function makePanels(pane, key){
+  const groups=[...pane.children].filter(el=>el.classList.contains("group")||el.classList.contains("find")||el.id==="sitctl");
+  const panels=groups.map((g,i)=>{
+    const t=(g.dataset.title?.replace("&amp;","&")||g.querySelector(":scope>.lbl,:scope>label,:scope>b")?.textContent||"Section").trim();
+    const id=key+":"+t.toLowerCase().replace(/[^a-z0-9]+/g,"-");
+    const d=document.createElement("details"); d.className="panel"; d.dataset.pid=id;
+    d.open = UIST.open?.[id] ?? (i<4);
+    d.innerHTML=`<summary><span class="chev">▸</span><span>${esc(t.replace(/·.*$/,"").trim())}</span><span class="mv"><button type="button" data-up title="Move up">▲</button><button type="button" data-dn title="Move down">▼</button></span></summary><div class="pbody"></div>`;
+    g.replaceWith(d); d.querySelector(".pbody").appendChild(g); g.style.gap="8px";
+    d.addEventListener("toggle",()=>{ (UIST.open=UIST.open||{})[id]=d.open; saveUI(); });
+    d.querySelector("[data-up]").onclick=ev=>{ ev.preventDefault(); ev.stopPropagation(); const p=d.previousElementSibling; if(p?.classList.contains("panel")) p.before(d); storeOrder(pane,key); };
+    d.querySelector("[data-dn]").onclick=ev=>{ ev.preventDefault(); ev.stopPropagation(); const n=d.nextElementSibling; if(n?.classList.contains("panel")) n.after(d); storeOrder(pane,key); };
+    return d;
+  });
+  const ord=UIST.order?.[key]; if(ord) ord.forEach(id=>{ const d=panels.find(x=>x.dataset.pid===id); if(d) pane.appendChild(d); });
+  pane.style.gap="8px";
+}
+function storeOrder(pane,key){ (UIST.order=UIST.order||{})[key]=[...pane.querySelectorAll(":scope>.panel")].map(d=>d.dataset.pid); saveUI(); }
+function applySecUI(){
+  const rep=$("#report"), order=UIST.secOrder||["sec1","sec2","sec3","sec4"];
+  const secs=[...rep.querySelectorAll(":scope>.sec")];
+  order.forEach(id=>{ const el=secs.find(x=>x.id===id); if(el) rep.appendChild(el); });
+  rep.querySelectorAll(":scope>.sec").forEach(sec=>{
+    const h=sec.querySelector(":scope>h3"); if(!h||h.querySelector(".mv")) return;
+    h.insertAdjacentHTML("afterbegin",`<span class="chev">▸</span>`);
+    h.insertAdjacentHTML("beforeend",`<span class="mv"><button type="button" data-up title="Move section up">▲</button><button type="button" data-dn title="Move section down">▼</button></span>`);
+    if ((UIST.secClosed||{})[sec.id]) sec.classList.add("collapsed");
+    h.onclick=ev=>{ if(ev.target.closest(".mv")) return; sec.classList.toggle("collapsed"); (UIST.secClosed=UIST.secClosed||{})[sec.id]=sec.classList.contains("collapsed"); saveUI(); };
+    h.querySelector("[data-up]").onclick=()=>{ const p=sec.previousElementSibling; if(p?.classList.contains("sec")) p.before(sec); UIST.secOrder=[...rep.querySelectorAll(":scope>.sec")].map(x=>x.id); saveUI(); };
+    h.querySelector("[data-dn]").onclick=()=>{ const n=sec.nextElementSibling; if(n?.classList.contains("sec")) n.after(sec); UIST.secOrder=[...rep.querySelectorAll(":scope>.sec")].map(x=>x.id); saveUI(); };
+  });
+  rep.querySelectorAll("[data-jump]").forEach(b=>b.onclick=()=>{ const t=document.getElementById(b.dataset.jump); t.classList.remove("collapsed"); rep.scrollTop = t.offsetTop - rep.querySelector(".head").offsetHeight; });
+}
 /* ---------- AI chat ---------- */
 S.chat={};
 const CHAT_PRESETS=[["Timeline summary","Write a short timeline summary of the war events in this area, in date order, with [E#] citations."],["Ground fighting","Which units fought in this area, when, and where exactly? Cite [E#]."],["Ordnance risk","Which ordnance is most likely to be found here and why? Separate recorded facts from inferences."],["Next steps","What should a UXO specialist check next for this area (aerial photos by date, archives, etc.)?"],["Client summary (DE)","Schreibe eine kurze Zusammenfassung für einen Kunden auf Deutsch (max. 150 Wörter), mit [E#]-Belegen."]];
@@ -1780,7 +1834,7 @@ function renderAuth(){
   mb.innerHTML = KHM.isOwner
     ? `<b>Owner mode</b><span>Documents you add are stored in your private Supabase storage; map points and sources are saved in your database and shown to visitors (files and page texts stay private).</span><label class="btn" style="width:max-content">Import page-text bundle (.json.gz)<input type="file" id="bundle" accept=".gz,.json.gz" hidden></label><label class="btn" style="width:max-content">Import find reports (.json.gz)<input type="file" id="findsfile" accept=".gz,.json.gz" hidden></label>`
     : `<b>Visitor mode</b><span>Add your own chronologies, diaries or reports: the files are read and mapped in your browser and stay only in this browser. If you agree when uploading, the dates, places and forces found (not the files) are sent to the map owner, who checks them before adding them to the public map. ${KHM.localCount()?`You have ${KHM.localCount()} items stored here.`:""}</span>${KHM.localCount()?`<button class="btn" id="clearlocal" style="width:max-content">Delete my local data</button>`:""}`;
-  renderContribs(); $("#u-share-l").hidden = KHM.isOwner || !KHM.configured;
+  renderContribs(); { const cp=$("#contribs")?.closest(".panel"); if(cp) cp.hidden=!KHM.isOwner; } $("#u-share-l").hidden = KHM.isOwner || !KHM.configured;
   let tq; $("#txtq").oninput=()=>{ clearTimeout(tq); tq=setTimeout(()=>searchTexts($("#txtq").value),400); };
   $("#findsfile")&&($("#findsfile").onchange=e=>e.target.files[0]&&importFinds(e.target.files[0]));
   { const fl=document.querySelector('[data-ly="finds"]')?.closest("label"); if(fl) fl.hidden=!KHM.isOwner; }
@@ -1915,6 +1969,33 @@ async function loadPages(src){
   if (pagesCache[src.pagesAssetId]) return pagesCache[src.pagesAssetId];
   const j = JSON.parse(await (await KHM.blob(src.pagesAssetId)).text()); pagesCache[src.pagesAssetId]=j.pages; return j.pages;
 }
+function findQuote(text, quote){
+  if(!quote||!text) return null;
+  const words = String(quote).replace(/[^\p{L}\p{N}\s-]/gu," ").split(/\s+/).filter(w=>w.length>2).slice(0,6);
+  if (!words.length) return null;
+  const re = new RegExp(words.map(w=>w.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")).join("[^\\p{L}\\p{N}]+(?:\\S+[^\\p{L}\\p{N}]+){0,3}?"),"iu");
+  const m = text.match(re); if(!m) return null;
+  return [m.index, Math.min(text.length, m.index+Math.max(m[0].length, String(quote).length))];
+}
+function locate(text, quote){
+  const lines=text.split("\n"), starts=[]; let o=0; for(const l of lines){ starts.push(o); o+=l.length+1; }
+  const paraOf=[]; let p=1, blank=false; lines.forEach((l,i)=>{ if(!l.trim()){ blank=true; paraOf.push(0); return; } if(blank&&i>0) p++; blank=false; paraOf.push(p); });
+  const paras = p;
+  const hit=findQuote(text,quote); if(!hit) return {lines,starts,paraOf,paras,hit:null};
+  const lineAt=pos=>{ let i=0; while(i+1<starts.length&&starts[i+1]<=pos) i++; return i; };
+  const l1=lineAt(hit[0]), l2=lineAt(Math.max(hit[0],hit[1]-1));
+  return {lines,starts,paraOf,paras,hit,l1,l2,para:paraOf[l1]||paraOf[l2]||1};
+}
+function linesHtml(L, from, to){
+  let h=""; let prevPara=null;
+  for (let i=from;i<=to;i++){
+    const t=L.lines[i], st=L.starts[i], en=st+t.length; if(L.paraOf[i]&&prevPara&&L.paraOf[i]!==prevPara) h+=`<div class="pbreak"></div>`; if(L.paraOf[i]) prevPara=L.paraOf[i];
+    let body=esc(t), hit=false;
+    if (L.hit && L.hit[0]<en+1 && L.hit[1]>st){ const a=Math.max(0,L.hit[0]-st), b=Math.min(t.length,L.hit[1]-st); body=esc(t.slice(0,a))+`<mark${i===L.l1?' id="hit"':""}>`+esc(t.slice(a,b))+"</mark>"+esc(t.slice(b)); hit=true; }
+    h+=`<div class="ln${hit?" hit":""}"><i>${i+1}</i><span>${body||"&nbsp;"}</span></div>`;
+  }
+  return h;
+}
 function highlight(text, quote){
   const t=esc(text); if(!quote) return t;
   const words = String(quote).replace(/[^\p{L}\p{N}\s-]/gu," ").split(/\s+/).filter(w=>w.length>2).slice(0,6);
@@ -1933,12 +2014,12 @@ async function openSource(e, pageOverride){
   let links = "";
   const pv = src.pagesAssetId && page && canOpen(src.pagesAssetId);
   if (pv){
-    h += `<div class="row"><button class="btn" id="pv-prev">‹ Page ${page-1}</button><span class="lbl">PDF page ${page}</span><button class="btn" id="pv-next">Page ${page+1} ›</button></div><div class="pagetext" id="pv">Loading page…</div>`;
+    h += `<div class="row"><button class="btn" id="pv-prev" ${page<=1?"disabled":""}>‹ Page ${Math.max(1,page-1)}</button><span class="lbl">PDF page ${page}</span><button class="btn" id="pv-next">Page ${page+1} ›</button></div><div class="pv-head" id="pv-head"></div><div class="pagetext" id="pv">Loading page…</div>`;
   } else if (e.quote){ h += `<div class="pagetext"><mark>${esc(e.quote)}</mark></div>`; }
   const webUrl = e.sourceUrl || (src.baseUrl && e.sourceRef ? src.baseUrl + e.sourceRef + ".html" : null);
   if (e.sourceId==="thor"){ h += `<div class="find"><span class="mono">${e.tonsHE!=null?`HE ${e.tonsHE} t`:""}${e.tonsIC!=null?` · incendiary ${e.tonsIC} t`:""}${e.tonsFrag!=null?` · fragmentation ${e.tonsFrag} t`:""}</span><span class="hint">Grouped from ${e.nRecords} THOR mission record${e.nRecords>1?"s":""} (WWII_ID ${esc((e.records||[]).join(", "))}${e.nRecords>6?", …":""}). THOR is the US Air Force's database of digitised mission reports; coordinates are the recorded target coordinates.</span></div>`; links += `<a class="btn" href="https://data.world/datamil/world-war-ii-thor-data" target="_blank" rel="noopener">THOR dataset ↗</a>`; }
   if (e.sourceId==="usarmy-chron"){ h += `<div class="find"><span><b>Unit:</b> ${esc(e.unit||"")}</span><span><b>Army:</b> ${esc(e.army||"")}</span><span class="hint">Condensed from the entry for ${esc(e.date)} in the U.S. Army chronology. Place matched to the German place gazetteer${e.locPrecision==="uncertain"?" — the name fits several places, so check it":""}. Open the chapter and search the page (Ctrl+F) for the place name.</span></div>`; links += `<a class="btn" href="https://ibiblio.org/hyperwar/USA/USA-SS-Chronology/USA-SS-Chronology-${e.chapter||5}.html" target="_blank" rel="noopener">Open chronology ${e.date.slice(0,4)} ↗</a>`; }
-  if (e.auto) h += `<span class="hint">Point placed automatically from the place name in this entry (location from THOR's target list). Check it, and correct it with “Edit event” if needed.</span>`;
+  if (e.auto) h += `<span class="hint">Point placed automatically from the place name in this entry (location from ${e.method==="rule"?"the German town and village list":e.method==="contribution"?"a visitor's document":"THOR's target list"}). Check it, and correct it with “Edit event” if needed.</span>`;
   if (src.web && webUrl) { h += `<span class="hint">${esc(src.note||"")}</span>`; links += `<a class="btn" href="${esc(webUrl)}" target="_blank" rel="noopener">Open ${esc(e.sourceRef||"page")} online ↗</a>`; }
   if (fileUrl(src,page)) links += `<a class="btn primary" href="${esc(fileUrl(src,page))}" target="_blank" rel="noopener">Open PDF${page?" at page "+page:""} ↗</a>`;
   else if (src.externalUrl) links += `<a class="btn" href="${esc(src.externalUrl)}${page?"#page="+page:""}" target="_blank" rel="noopener">Open original${page?" at page "+page:""} ↗</a>`;
@@ -1946,7 +2027,24 @@ async function openSource(e, pageOverride){
   body.innerHTML = h; foot.innerHTML = links || `<span class="hint">No link stored for this source.</span>`;
   openModal("#m-source");
   if (pv){
-    try{ const pages = await loadPages(src); const txt = pages[page-1]??"(page not stored)"; $("#pv").innerHTML = highlight(txt, page===e.page?e.quote:null); $("#hit")?.scrollIntoView({block:"center"}); }
+    try{
+      const pages = await loadPages(src); const txt = pages[page-1]??"(page not stored)";
+      const Lc = locate(txt, page===e.page?e.quote:null);
+      const pvh=$("#pv"); pvh.className="lines";
+      const head=$("#pv-head");
+      if (Lc.hit){
+        const where=`p. ${page}${Lc.paras>1?`, para. ${Lc.para}`:""}, line${Lc.l2>Lc.l1?`s ${Lc.l1+1}–${Lc.l2+1}`:` ${Lc.l1+1}`}`;
+        head.innerHTML=`<span class="pv-loc">📍 Page ${page}${Lc.paras>1?` · paragraph ${Lc.para} of ${Lc.paras}`:""} · line${Lc.l2>Lc.l1?`s ${Lc.l1+1}–${Lc.l2+1}`:` ${Lc.l1+1}`} of ${Lc.lines.length}</span><button class="btn" id="pv-all">Show whole page</button><button class="btn" id="pv-cite">Copy citation</button>`;
+        const from=Math.max(0,Lc.l1-6), to=Math.min(Lc.lines.length-1,Lc.l2+6);
+        pvh.innerHTML=(from>0?`<div class="gap">… lines 1–${from} above …</div>`:"")+linesHtml(Lc,from,to)+(to<Lc.lines.length-1?`<div class="gap">… lines ${to+2}–${Lc.lines.length} below …</div>`:"");
+        $("#pv-all").onclick=()=>{ pvh.innerHTML=linesHtml(Lc,0,Lc.lines.length-1); $("#pv-all").remove(); $("#hit")?.scrollIntoView({block:"center"}); };
+        $("#pv-cite").onclick=async()=>{ const q=txt.slice(Lc.hit[0],Lc.hit[1]).replace(/\s+/g," ").trim(); const c=`${src.title}${src.author?" ("+src.author+")":""}, ${where}: “${q}”`; try{ await navigator.clipboard.writeText(c); $("#pv-cite").textContent="Copied"; }catch{ prompt("Citation",c); } };
+      } else {
+        head.innerHTML=`<span class="pv-loc">Page ${page} · ${Lc.lines.length} lines</span>${page===e.page&&e.quote?`<span class="hint">The quote could not be found word for word on this page (OCR text may differ). Look for: “${esc(e.quote)}”</span>`:""}`;
+        pvh.innerHTML=linesHtml(Lc,0,Lc.lines.length-1);
+      }
+      $("#hit")?.scrollIntoView({block:"center"});
+    }
     catch{ $("#pv").textContent="The stored page text could not be loaded."; }
     $("#pv-prev").onclick=()=>page>1&&openSource(e,page-1); $("#pv-next").onclick=()=>openSource(e,page+1);
   }
@@ -2421,7 +2519,7 @@ function subscribe(col, onDocs){
   subscribe("sources", docs=>{ S.sources=Object.fromEntries(docs.map(d=>[d._id,d])); renderSources(); renderSoon(); });
   subscribe("ordnance", docs=>{ S.ord=docs; renderDict(); renderSources(); renderSoon(); });
   claude.use("sample").then(s=>{ S.sample=s; renderSoon(); renderSources(); renderAuth(); });
-  renderAuth(); initFilters();
+  initFilters(); makePanels($("#p-area"),"area"); makePanels($("#p-src"),"src"); renderAuth();
   claude.use("assets").then(a=>{ S.assets=a; if(!a) $("#srchint").textContent=""; });
 })();
 </script>
