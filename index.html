@@ -1070,7 +1070,7 @@ header.top{flex-wrap:nowrap}header.top .sub{white-space:nowrap;overflow:hidden;t
       </div>
       <label class="chk" id="u-share-l"><input type="checkbox" id="u-share" checked><span>Share what is found (dates, places, forces, short quotes — not the file) with the map owner, who may add it to the public map</span></label>
       <label class="chk"><input type="checkbox" id="u-readnow" checked><span id="u-readnow-t">Read the stored files right away (one after another; you can pause)</span></label>
-      <span class="hint" id="u-help">Files are stored with this map; anything over 20 MB is split into page-range parts so every page still opens with one click. Scanned PDFs without a text layer are stored but need OCR before they can be read: ask Claude in chat to run it. Reading puts one map point per place mentioned, with the page number and a short quote.</span>
+      <span class="hint" id="u-help">Files are stored with this map; anything over 20 MB is split into page-range parts so every page still opens with one click. Scanned PDFs without a text layer are stored but need OCR (text recognition) before they can be read. Reading puts one map point per place mentioned, with the page number and a short quote.</span>
       <div class="group" id="u-progress" hidden><div class="bar"><i id="u-bar" style="width:0%"></i></div><div class="log" id="u-log"></div></div>
     </div>
     <div class="df"><button class="btn" id="u-stop" hidden>Pause</button><button class="btn primary" id="u-go">Store and read</button></div>
@@ -1287,7 +1287,7 @@ $("#q").addEventListener("input",()=>{
   $("#locate").hidden = q.length<3; $("#qhint").textContent="";
   if (q.length<2){ box.hidden=true; return; }
   const hits = gaz.filter(g=>norm(g.name).includes(q)).sort((a,b)=>(norm(a.name).startsWith(q)?0:1)-(norm(b.name).startsWith(q)?0:1) || (b.pop||0)-(a.pop||0)).slice(0,12);
-  box.innerHTML = hits.map((g,i)=>`<button data-i="${i}"><span>${esc(g.name)}</span><small>${esc(g.kind)}${g.note?" · "+esc(g.note):""}</small></button>`).join("") || `<div class="empty" style="padding:6px 8px">No match in the map's place list. Try “Locate with Claude”.</div>`;
+  box.innerHTML = hits.map((g,i)=>`<button data-i="${i}"><span>${esc(g.name)}</span><small>${esc(g.kind)}${g.note?" · "+esc(g.note):""}</small></button>`).join("") || `<div class="empty" style="padding:6px 8px">No match in the map's place list. Press Enter to search it as an address.</div>`;
   box.hidden=false;
   box.querySelectorAll("button").forEach(b=>b.onclick=()=>pickGaz(hits[+b.dataset.i]));
 });
@@ -1541,9 +1541,9 @@ function render(){
   let h = `<div class="head"><span class="lbl">Historisch-genetische Rekonstruktion</span><h2>${areaTxt}</h2>
     <div class="meta">${coords}${esc(S.from)} – ${esc(S.to)} · ${evs.length} recorded event${evs.length===1?"":"s"} from ${srcIds.length} source${srcIds.length===1?"":"s"}</div>
     <div class="row"><button class="btn" data-jump="sec1">1 Events</button><button class="btn" data-jump="sec2">2 Ordnance</button><button class="btn" data-jump="sec3">3 Finds</button><button class="btn" data-jump="sec4">4 Sensitivity</button></div>
-    <div class="row"><button class="btn" id="copyrep">Copy report</button>${S.sample?`<select id="nlang" aria-label="Language"><option value="German">Deutsch</option><option value="English">English</option></select><button class="btn primary" id="narrate">Write text with Claude</button>`:""}</div>
+    <div class="row"><button class="btn" id="copyrep">Copy report</button>${S.sample?`<select id="nlang" aria-label="Language"><option value="German">Deutsch</option><option value="English">English</option></select><button class="btn primary" id="narrate">Write report text</button>`:""}</div>
     </div><div id="narrbox" class="narr" style="margin:12px 16px 0" ${S.narrKey===areaTxt&&S.narrHtml?"":"hidden"}>${S.narrKey===areaTxt?S.narrHtml||"":""}</div>
-    ${S.sample&&evs.length?`<div class="chat"><span class="lbl">Ask about this area <span class="de">KI-Assistent</span></span><div class="row" style="flex-wrap:wrap;gap:4px">${CHAT_PRESETS.map((q,i)=>`<button class="btn chip" data-cp="${i}">${esc(q[0])}</button>`).join("")}</div><div id="chatlog">${(S.chat[areaTxt]||[]).map(chatHtml).join("")}</div><div class="row"><input type="text" id="chatq" placeholder="e.g. Which units fought here in April 1945?" style="flex:1"><button class="btn primary" id="chatgo">Ask</button></div></div>`:!S.sample&&evs.length?`<div class="chat"><span class="hint">AI summaries and questions are available to the map owner. ${KHM.isOwner?"":"Sign in as owner to use them."}</span></div>`:""}`;
+    ${S.sample&&evs.length?`<div class="chat"><span class="lbl">Ask about this area</span><div class="row" style="flex-wrap:wrap;gap:4px">${CHAT_PRESETS.map((q,i)=>`<button class="btn chip" data-cp="${i}">${esc(q[0])}</button>`).join("")}</div><div id="chatlog">${(S.chat[areaTxt]||[]).map(chatHtml).join("")}</div><div class="row"><input type="text" id="chatq" placeholder="e.g. Which units fought here in April 1945?" style="flex:1"><button class="btn primary" id="chatgo">Ask</button></div></div>`:!S.sample&&evs.length?`<div class="chat"><span class="hint">Report text and questions are available to the map owner. ${KHM.isOwner?"":"Sign in as owner to use them."}</span></div>`:""}`;
   // 1 sequence
   h += `<div class="sec" id="sec1"><h3><span class="n">1</span>Sequence of events <span class="de">Ereignischronologie</span></h3>${evs.length?`<div class="tlwrap"><div class="row" style="justify-content:space-between"><span class="lbl">Timeline <span class="de">Zeitstrahl</span></span><span class="hint" id="tlinfo">Click a mark to show it on the small map and in the list</span></div><div id="tl"></div><span class="hint" id="mmnote"></span><div id="mmslot"></div></div>`:""}<div id="frontbox"></div>`;
   if (!S.loaded.events) h += `<div class="empty">Loading events…</div>`;
@@ -1634,7 +1634,7 @@ ${SIT.res?.hits?.length?`FRONT LINE: 12th Army Group situation maps show front-l
   try{
     await S.sample(prompt,{signal:narrCtl.signal,onText:({text})=>{ S.narrHtml = esc(text).replace(/\[E(\d+)\]/g,'<span class="cite" data-e="$1">[E$1]</span>'); const b=$("#narrbox"); if(b&&S.narrKey===area){ b.hidden=false; b.innerHTML=S.narrHtml; } }});
     wireCites(evs);
-  }catch(e){ if(e.code!=="cancelled"){ S.narrHtml = esc(e.text?e.text+"\n\n":"") + ({not_granted:"Claude is not allowed for this page.",rate_limited:"Too many requests or usage limit reached; try again later."}[e.code]||"The text could not be written. Try again."); const b=$("#narrbox"); if(b) b.innerHTML=S.narrHtml; } }
+  }catch(e){ if(e.code!=="cancelled"){ S.narrHtml = esc(e.text?e.text+"\n\n":"") + ({not_granted:"Not available for this page.",rate_limited:"Too many requests or usage limit reached; try again later."}[e.code]||"The text could not be written. Try again."); const b=$("#narrbox"); if(b) b.innerHTML=S.narrHtml; } }
 }
 function wireCites(evs){
   $("#narrbox")?.querySelectorAll(".cite").forEach(c=>c.onclick=()=>{ const e=evs[+c.dataset.e-1]; if(!e) return; const r=document.getElementById("row-"+e._id); r?.scrollIntoView({block:"center"}); r?.classList.add("flash"); setTimeout(()=>r?.classList.remove("flash"),1600); map.setView([e.lat,e.lon],Math.max(map.getZoom(),11)); });
@@ -1813,7 +1813,7 @@ function applySecUI(){
   });
   rep.querySelectorAll("[data-jump]").forEach(b=>b.onclick=()=>{ const t=document.getElementById(b.dataset.jump); t.classList.remove("collapsed"); rep.scrollTop = t.offsetTop - rep.querySelector(".head").offsetHeight; });
 }
-/* ---------- AI chat ---------- */
+/* ---------- area questions ---------- */
 S.chat={};
 const CHAT_PRESETS=[["Timeline summary","Write a short timeline summary of the war events in this area, in date order, with [E#] citations."],["Ground fighting","Which units fought in this area, when, and where exactly? Cite [E#]."],["Ordnance risk","Which ordnance is most likely to be found here and why? Separate recorded facts from inferences."],["Next steps","What should a UXO specialist check next for this area (aerial photos by date, archives, etc.)?"],["Client summary (DE)","Schreibe eine kurze Zusammenfassung für einen Kunden auf Deutsch (max. 150 Wörter), mit [E#]-Belegen."]];
 const chatHtml = m => `<div class="cmsg ${m.role}">${m.role==="user"?esc(m.text):esc(m.text).replace(/\[E(\d+)\]/g,'<span class="cite" data-e="$1">[E$1]</span>')}</div>`;
@@ -1829,7 +1829,7 @@ EVENTS (${evs.length} total${evs.length>300?", first 300 shown":""}):
 ${lines}
 ${hist?"EARLIER IN THIS CHAT:\n"+hist+"\n":""}QUESTION: ${q}`;
     try{ const r=await S.sample(prompt,{maxTokens:1500}); log[log.length-1].text=r.text; }
-    catch(e){ log[log.length-1].text = e.code==="not_granted"?"Only the map owner can use the AI assistant.":e.code==="rate_limited"?"Too many requests; try again later.":"The answer could not be produced."+(e.text?" ("+e.text+")":""); }
+    catch(e){ log[log.length-1].text = e.code==="not_granted"?"Only the map owner can use this.":e.code==="rate_limited"?"Too many requests; try again later.":"The answer could not be produced."+(e.text?" ("+e.text+")":""); }
     render(); setTimeout(()=>$("#chatlog")?.lastElementChild?.scrollIntoView({block:"nearest"}),50);
   };
   $("#report").querySelectorAll("[data-cp]").forEach(b=>b.onclick=()=>go(CHAT_PRESETS[+b.dataset.cp][1]));
@@ -1837,7 +1837,7 @@ ${hist?"EARLIER IN THIS CHAT:\n"+hist+"\n":""}QUESTION: ${q}`;
   $("#chatlog")?.querySelectorAll(".cite").forEach(c=>c.onclick=()=>{ const e=evs[+c.dataset.e-1]; if(!e) return; const r=document.getElementById("row-"+e._id); r?.scrollIntoView({block:"center"}); r?.classList.add("flash"); setTimeout(()=>r?.classList.remove("flash"),1600); map.setView([e.lat,e.lon],Math.max(map.getZoom(),11)); });
 }
 
-/* ---------- reading dates and places without AI (works for everyone) ---------- */
+/* ---------- reading dates and places (quick reader, works for everyone) ---------- */
 const MON_ALL={jan:1,january:1,januar:1,"jän":1,feb:2,february:2,februar:2,mar:3,march:3,"märz":3,maerz:3,apr:4,april:4,may:5,mai:5,jun:6,june:6,juni:6,jul:7,july:7,juli:7,aug:8,august:8,sep:9,sept:9,september:9,oct:10,october:10,okt:10,oktober:10,nov:11,november:11,dec:12,december:12,dez:12,dezember:12};
 const MON_RE="(jan(?:uary|uar)?|jän|feb(?:ruary|ruar)?|mar(?:ch)?|märz|maerz|apr(?:il)?|may|mai|june?|juni|july?|juli|aug(?:ust)?|sept?(?:ember)?|oct(?:ober)?|okt(?:ober)?|nov(?:ember)?|dec(?:ember)?|dez(?:ember)?)\\.?";
 const RE_DATES=[
@@ -1969,7 +1969,7 @@ function renderAuth(){
   { const fl=document.querySelector('[data-ly="finds"]')?.closest("label"); if(fl) fl.hidden=!KHM.isOwner; }
   $("#bundle")&&($("#bundle").onchange=e=>e.target.files[0]&&importBundle(e.target.files[0]));
   $("#clearlocal")&&($("#clearlocal").onclick=()=>confirmDlg("Delete all documents and events you added in this browser?",()=>KHM.clearLocal()));
-  $("#u-readnow-t").textContent = S.sample ? "Read the stored files with Claude right away (one after another; you can pause)" : "Find dates and places in the stored files right away (no AI, in your browser)";
+  $("#u-readnow-t").textContent = S.sample ? "Read the stored files in detail right away (one after another; you can pause)" : "Find dates and places in the stored files right away (in your browser)";
 }
 $("#li-go").onclick=async()=>{ $("#li-msg").textContent="Signing in…"; try{ await KHM.signIn($("#li-email").value.trim(),$("#li-pw").value); }catch(e){ $("#li-msg").textContent=e.message||"Sign-in failed."; } };
 $("#li-pw").onkeydown=e=>{ if(e.key==="Enter") $("#li-go").click(); };
@@ -2250,8 +2250,8 @@ function renderSources(){
       ${s.note?`<span class="hint">${esc(s.note)}</span>`:""}
       ${pct!=null&&p.next>(s.pageFrom||1)?`<div class="bar" title="${pct}% read"><i style="width:${p.done?100:pct}%"></i></div><span class="hint">${p.done?"All selected pages read":`Read up to page ${p.next-1} of ${s.pageFrom||1}–${s.pageTo}`}</span>`:""}
       <div class="row">${url?`<a class="btn" href="${esc(url)}" target="_blank" rel="noopener">Open PDF ↗</a>`:s.externalUrl?`<a class="btn" href="${esc(s.externalUrl)}" target="_blank" rel="noopener">Original ↗</a>`:""}
-      ${s.pagesAssetId&&canOpen(s.pagesAssetId)&&s.kind==="chronology"?`<button class="btn" data-rule="${esc(id)}" title="Find dates and place names in the text without AI">${s.ruleEvents!=null?`Re-map dates & places (${s.ruleEvents})`:"Map dates & places"}</button>`:""}
-      ${canRead?`<button class="btn primary" data-read="${esc(id)}">${p&&p.next>(s.pageFrom||1)?"Continue reading":"Read with Claude"}</button>`:""}
+      ${s.pagesAssetId&&canOpen(s.pagesAssetId)&&s.kind==="chronology"?`<button class="btn" data-rule="${esc(id)}" title="Find dates and place names in the text">${s.ruleEvents!=null?`Re-map dates & places (${s.ruleEvents})`:"Map dates & places"}</button>`:""}
+      ${canRead?`<button class="btn primary" data-read="${esc(id)}">${p&&p.next>(s.pageFrom||1)?"Continue reading":"Read in detail"}</button>`:""}
       ${S.canWrite?`<button class="btn" data-del="${esc(id)}">Delete</button>`:""}</div></div>`;
   }).join("") || `<div class="empty">No sources yet.</div>`;
   $("#srclist").innerHTML = h;
@@ -2281,7 +2281,7 @@ function resetUpload(mode){
   readingId = mode==="read" ? readingId : null;
   $("#u-pick").hidden = mode==="read"; $("#u-readnow").closest("label").hidden = mode==="read";
   $("#u-kind").closest(".group").hidden = mode==="read"; $("#u-author").closest(".group").hidden = mode==="read";
-  $("#mu-title").textContent = mode==="read" ? "Read with Claude" : "Add documents";
+  $("#mu-title").textContent = mode==="read" ? "Read in detail" : "Add documents";
   $("#u-go").textContent = mode==="read" ? "Start reading" : "Store and read";
   $("#u-progress").hidden=true; $("#u-log").textContent=""; $("#u-go").disabled=false;
 }
@@ -2289,7 +2289,7 @@ $("#addsrc").onclick=()=>{ if(!S.assets||!S.canWrite){ $("#srchint").textContent
 function openReadOptions(id){
   const s=S.sources[id]; readingId=id; resetUpload("read");
   $("#u-scope").value=s.scope||"Germany"; $("#u-kw").value=s.keywords||""; $("#u-from").value=s.progress?.next||s.pageFrom||1; $("#u-to").value=s.pageTo||s.pageCount||"";
-  $("#u-help").textContent=`“${s.title}”, ${s.pageCount||"?"} pages. Claude reads a few pages at a time and saves one map point per place, with page and quote. Narrow it with keywords or a page range; you can pause and continue later.`;
+  $("#u-help").textContent=`“${s.title}”, ${s.pageCount||"?"} pages. The reader goes through a few pages at a time and saves one map point per place, with page and quote. Narrow it with keywords or a page range; you can pause and continue later.`;
   openModal("#m-upload");
 }
 const KIND_GUESS = n => /tm[ _-]?9|op[ _-]?\d|navord|bomb|fuze|ordnance|ammunition|munition|ballistic|eindring/i.test(n) ? "ordnance" : /abbreviation|codename|geographic|strength|fm[ _-]?\d/i.test(n) ? "reference" : "chronology";
@@ -2378,7 +2378,7 @@ async function storeFile(file, sha, kind, attachId){
   await S.db.doc("sources/"+id).set(doc);
   S.sources[id]={...doc,_id:id};
   if (KHM.isOwner){ try{ await KHM.saveTexts(id, doc.title, pages); log("  text saved to the text archive."); }catch(e){ log("  text archive not updated (run update-2 SQL in Supabase): "+(e.message||e.code)); } }
-  log(needsOcr ? "  stored. This is a scan without text: ask Claude in chat to run OCR before reading it." : `  stored (${pages.length} pages).`);
+  log(needsOcr ? "  stored. This is a scan without text: it needs OCR (text recognition) before reading." : `  stored (${pages.length} pages).`);
   return needsOcr ? null : id;
 }
 $("#u-go").onclick=async()=>{
@@ -2417,7 +2417,7 @@ $("#u-go").onclick=async()=>{
     log(`${done} stored, ${skipped} skipped.`);
     if ($("#u-readnow").checked && !S.sample) for (const id of toRead){ if (S.sources[id]?.kind==="chronology"){ log(`Finding dates and places in “${S.sources[id].title}”…`); await ruleExtract(id); await shareFindings(id); } }
     if ($("#u-readnow").checked && S.sample) for (const id of toRead){ if (extCtl?.signal.aborted) break; log(`Reading “${S.sources[id].title}”…`); await runExtraction(id); await shareFindings(id); if (extCtl?.signal.aborted) break; }
-    else if (toRead.length && S.sample) log("Use “Read with Claude” in the Sources tab when you want map points from them.");
+    else if (toRead.length && S.sample) log("Use “Read in detail” in the Sources tab when you want map points from them.");
   }catch(e){ log("Stopped: "+(e?.message||e?.code||"unknown error")); }
   $("#u-go").disabled=false;
 };
@@ -2479,13 +2479,13 @@ async function runExtraction(id){
       if (extCtl.signal.aborted) break;
       const c=chunks[i];
       $("#u-bar").style.width = Math.round(100*(c.pages[0]-(src.pageFrom||1))/Math.max(1,src.pageTo-(src.pageFrom||1)+1))+"%";
-      log(`Pages ${c.pages[0]}–${c.pages.at(-1)}: asking Claude…`);
+      log(`Pages ${c.pages[0]}–${c.pages.at(-1)}: reading…`);
       let r;
       try{ r = await S.sample.json(prompt(src,c,pages,c.before||p.lastDate),{signal:extCtl.signal,modelTier:"default"}); }
       catch(e){
         if (e.code==="cancelled") break;
         if (e.code==="invalid_json"){ log("  Could not read the answer for these pages; skipping them."); }
-        else { log("  Stopped: "+({rate_limited:"usage or rate limit reached — continue later",not_granted:"Claude was not allowed for this page",prompt_too_large:"pages too long"}[e.code]||e.code)); break; }
+        else { log("  Stopped: "+({rate_limited:"usage or rate limit reached — continue later",not_granted:"Not available for this page",prompt_too_large:"pages too long"}[e.code]||e.code)); break; }
       }
       let n=0;
       if (r && src.kind==="ordnance"){
