@@ -1602,7 +1602,7 @@ function render(){
   $("#report").querySelectorAll("[data-jump]").forEach(b=>b.onclick=()=>{ const r=$("#report"), t=document.getElementById(b.dataset.jump); r.scrollTop = t.offsetTop - r.querySelector(".head").offsetHeight; });
   const nb=$("#narrate"); if(nb) nb.onclick=()=>narrate(evs,A,areaTxt);
   wireChat(evs,A,areaTxt);
-  wireCites(evs); fillFront(); drawTimeline(evs); placeMini(evs);
+  wireCites(evs); fillFront(); drawTimeline(evs); S.lastEvs=evs; placeMini(evs);
   $("#status").textContent = `${S.events.length} events · ${Object.keys(S.sources).length} sources · ${S.ord.length} ordnance types`;
 }
 function ordSrcChip(o){ const s=S.sources[o.sourceId]; return `<button class="src" data-ord="${esc(o._id)}">↗ ${esc(s?s.title.slice(0,34):"source")}${o.page?" · p. "+esc(o.page):""}</button>`; }
@@ -1773,7 +1773,7 @@ function mview(v){
   document.body.classList.toggle("m-side",v==="side"); document.body.classList.toggle("m-report",v==="report");
   document.querySelectorAll("[data-mv]").forEach(b=>b.classList.toggle("on",b.dataset.mv===v));
   if (v==="map") setTimeout(()=>map.invalidateSize(),50);
-  if (v==="report") setTimeout(()=>mini?.invalidateSize(),80);
+  if (v==="report") setTimeout(()=>{ if(mini&&S.lastEvs){ placeMini(S.lastEvs); } },80);
 }
 document.querySelectorAll("[data-mv]").forEach(b=>b.onclick=()=>mview(b.dataset.mv));
 const isPhone=()=>matchMedia("(max-width:760px)").matches;
