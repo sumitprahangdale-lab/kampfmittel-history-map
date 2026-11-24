@@ -59,7 +59,7 @@
     state.listeners[col].forEach(fn => { try { fn({ docs, metadata: { fromCache: false } }); } catch (e) { console.error(e); } });
   }
   async function loadSeed() {
-    try { const s = await fetch("data/seed.json").then(r => r.json()); COLS.forEach(c => Object.entries(s[c] || {}).forEach(([id, d]) => state.seed[c].set(id, d))); } catch {}
+    try { const s = await fetch("data/seed.json?v=" + (window.APP_VERSION || Date.now())).then(r => r.json()); COLS.forEach(c => Object.entries(s[c] || {}).forEach(([id, d]) => state.seed[c].set(id, d))); } catch {}
   }
   async function loadRemote(col) {
     if (!sb) return;

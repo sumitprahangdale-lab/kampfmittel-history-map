@@ -1093,6 +1093,7 @@ header.top{flex-wrap:nowrap}header.top .sub{white-space:nowrap;overflow:hidden;t
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script>window.APP_VERSION="20261124-2330";</script>
 <script src="config.js"></script>
 <script src="backend.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
@@ -2643,7 +2644,7 @@ loadSit();
 S.dbEvents=[]; S.staticEvents=[]; S.hiddenSources=new Set();
 async function loadStatic(){
   try{
-    const idx = await fetch("data/index.json").then(r=>r.json());
+    const idx = await fetch("data/index.json?v="+window.APP_VERSION).then(r=>r.json());
     const sets = await Promise.all(idx.files.map(f=>fetch(f).then(r=>r.json()).catch(()=>null)));
     S.staticEvents = sets.filter(Boolean).flatMap(d=>d.events.map(e=>({...e,_id:e.id,_static:true})));
   }catch{ S.staticEvents=[]; }
