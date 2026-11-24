@@ -745,6 +745,7 @@ a.btn.primary{color:var(--panel)}
 .tlm{cursor:pointer}.tlm circle,.tlm path{stroke:var(--panel);stroke-width:1;opacity:.9}.tlm:hover circle,.tlm:hover path,.tlm.on circle,.tlm.on path{stroke:var(--ink);stroke-width:2;opacity:1}
 #minimap{height:230px;border-radius:4px;border:1px solid var(--line);background:var(--sea)}#mmslot:empty{display:none}
 .mmnum span{display:inline-block;min-width:16px;padding:0 3px;border-radius:8px;color:#fff;font:600 10px/16px var(--f-body);text-align:center;border:1px solid #fff;transform:translate(-50%,-50%)}
+body.osm .lbl-place{display:none}#mapstyle .btn.on{background:var(--ink);color:var(--panel)}
 .authbox{display:flex;gap:6px;align-items:center;margin-left:8px}.chip{padding:2px 8px;font-size:12px}.chip.on{background:var(--ink);color:var(--panel)}.yearchips{flex-wrap:wrap;gap:4px}
 .chat{margin:12px 16px 0;padding:10px;border:1px solid var(--line);border-radius:6px;display:flex;flex-direction:column;gap:6px;background:var(--bg)}
 #chatlog{display:flex;flex-direction:column;gap:6px;max-height:320px;overflow:auto}.cmsg{padding:6px 9px;border-radius:6px;white-space:pre-wrap;font-size:13px}.cmsg.user{align-self:flex-end;background:var(--ink);color:var(--panel);max-width:85%}.cmsg.ai{background:var(--panel);border:1px solid var(--line)}
@@ -899,6 +900,10 @@ mark{background:color-mix(in srgb,var(--warn) 40%,transparent);color:inherit;pad
       </div>
       <div class="group">
         <span class="lbl">Map layers</span>
+        <div class="seg" role="group" aria-label="Map style" id="mapstyle">
+          <button class="btn on" data-ms="schematic">Schematic map</button>
+          <button class="btn" data-ms="osm">OpenStreetMap</button>
+        </div>
         <div class="group" id="layers"></div>
       </div>
     </div>
@@ -1072,6 +1077,8 @@ async function loadBase(){
   }
   ["countries","urban","lakes","rivers","rail","admin1","kreise"].forEach(n=>L_[n]&&L_[n].addTo(map));
   buildLabels(); applyLayers(); buildGazetteer();
+  document.querySelectorAll("[data-ms]").forEach(b=>b.onclick=()=>setMapStyle(b.dataset.ms));
+  if (S.mapStyle==="osm") setMapStyle("osm");
 }
 function restyle(){ const st=style(); for (const n in L_) if (L_[n].setStyle && st[n]) L_[n].setStyle(st[n]); drawSelection(); drawEvents(); }
 const mq = matchMedia("(prefers-color-scheme: dark)"); mq.addEventListener?.("change",restyle);
@@ -1079,7 +1086,7 @@ new MutationObserver(restyle).observe(document.documentElement,{attributes:true,
 
 let labelLayer = L.layerGroup().addTo(map);
 function buildLabels(){
-  labelLayer.clearLayers(); if(!geo.places) return;
+  labelLayer.clearLayers(); if(!geo.places || S.mapStyle==="osm") return;
   const z = map.getZoom();
   for (const [name,lat,lon,pop] of geo.places){
     const need = pop>=1e6?4:pop>=3e5?6:pop>=1e5?7.5:pop>=3e4?9:10;
@@ -1088,10 +1095,23 @@ function buildLabels(){
   }
 }
 map.on("zoomend",()=>{buildLabels();applyLayers();});
+map.createPane("tiles").style.zIndex=150;
+const OSM_ATTR='© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors';
+const osmTiles = () => L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:OSM_ATTR,pane:"tiles",crossOrigin:true});
+S.mapStyle = (()=>{ try{ return localStorage.getItem("khm-style")||"schematic"; }catch{ return "schematic"; } })();
+let osmMain=null;
+function setMapStyle(st){
+  S.mapStyle=st; try{ localStorage.setItem("khm-style",st); }catch{}
+  document.querySelectorAll("[data-ms]").forEach(b=>b.classList.toggle("on",b.dataset.ms===st));
+  document.body.classList.toggle("osm",st==="osm");
+  if (st==="osm"){ osmMain=osmMain||osmTiles(); osmMain.addTo(map); } else if (osmMain) map.removeLayer(osmMain);
+  applyLayers(); buildLabels(); setMiniStyle?.();
+}
 function applyLayers(){
-  const z = map.getZoom(), lv = S.layers;
+  const z = map.getZoom(), lv = S.layers, osm = S.mapStyle==="osm";
   const tog = (n,on)=>{ if(!L_[n]) return; on ? L_[n].addTo(map) : map.removeLayer(L_[n]); };
-  tog("urban",lv.urban); tog("rail",lv.rail); tog("roads",lv.roads); tog("rivers",lv.rivers); tog("lakes",lv.rivers);
+  tog("countries",!osm);
+  tog("urban",lv.urban&&!osm); tog("rail",lv.rail&&!osm); tog("roads",lv.roads&&!osm); tog("rivers",lv.rivers&&!osm); tog("lakes",lv.rivers&&!osm);
   tog("kreise", lv.districts && (z>=8 || (S.mode==="region" && S.level==="district")));
 }
 
@@ -1185,27 +1205,70 @@ function gotoPoint(lat,lon,label,zoom){
   map.setView([lat,lon], zoom || Math.max(map.getZoom(), S.sel.r>25?9:10)); drawSelection(); render();
 }
 let pin=null;
+function cleanAddr(q){ return q.replace(/\bstr\.?(?=\s|\d|$)/gi,"straße").replace(/strasse/gi,"straße").replace(/\s+/g," ").trim(); }
+async function nominatim(q,extra=""){ const r=await fetch("https://nominatim.openstreetmap.org/search?format=jsonv2&limit=6&accept-language=de,en&q="+encodeURIComponent(q)+extra,{headers:{Accept:"application/json"}}); return (await r.json()).map(g=>({lat:+g.lat,lon:+g.lon,name:g.display_name.split(",").slice(0,3).join(",").trim(),full:g.display_name,type:g.type||g.category||"address"})); }
+async function photon(q){ // typo-tolerant search (komoot Photon, OpenStreetMap data), biased towards the map centre
+  const c=map.getCenter(); const r=await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=8&lang=de&lat=${c.lat.toFixed(3)}&lon=${c.lng.toFixed(3)}`);
+  const j=await r.json();
+  return (j.features||[]).map(f=>{ const p=f.properties||{}; const street=[p.street||(p.osm_key==="highway"?p.name:""),p.housenumber].filter(Boolean).join(" ");
+    const name=[street||p.name,[p.postcode,p.city||p.town||p.village||p.county].filter(Boolean).join(" ")].filter(Boolean).join(", ");
+    return {lat:f.geometry.coordinates[1],lon:f.geometry.coordinates[0],name,full:[name,p.state,p.country].filter(Boolean).join(", "),type:p.osm_value||p.type||"address"}; });
+}
+function fuzzyTowns(q){ // nearest spellings from the local town/village list (for "Stutgart", "Esslingn" …)
+  const words=norm(q).split(/[\s,]+/).filter(w=>w.length>=4&&!/\d/.test(w)); const out=[];
+  const lev=(a,b)=>{ if(Math.abs(a.length-b.length)>2) return 9; const d=Array.from({length:b.length+1},(_,i)=>i); for(let i=1;i<=a.length;i++){ let prev=d[0]; d[0]=i; for(let j=1;j<=b.length;j++){ const t=d[j]; d[j]=Math.min(d[j]+1,d[j-1]+1,prev+(a[i-1]===b[j-1]?0:1)); prev=t; } } return d[b.length]; };
+  for (const w of words) for (const g of gaz){ if(g.f||!g.lat||g.kind==="event") continue; const n=norm(g.name).split(/[ ,(]/)[0]; if(n.length<4) continue; const d=lev(w,n); if(d>0&&d<=(w.length>6?2:1)) out.push({...g,d,word:w}); }
+  return out.sort((a,b)=>a.d-b.d||(b.pop||0)-(a.pop||0)).filter((g,i,arr)=>arr.findIndex(x=>x.name===g.name)===i).slice(0,5);
+}
 async function geocode(q){
-  const go = async extra => (await fetch("https://nominatim.openstreetmap.org/search?format=jsonv2&limit=6&accept-language=de,en&q="+encodeURIComponent(q)+extra,{headers:{Accept:"application/json"}})).json();
-  let r = await go("&countrycodes=de"); if (!r.length) r = await go("");
-  return r;
+  const qq=cleanAddr(q); let r=[], how="";
+  try{ r=await nominatim(qq,"&countrycodes=de"); }catch{}
+  if (!r.length){ try{ r=await photon(qq); how="similar"; }catch{} }
+  if (!r.length){ const noNum=qq.replace(/\b\d+\s*[a-z]?\b/gi,"").replace(/\s+,/g,",").trim(); if(noNum!==qq){ try{ r=await photon(noNum); how="similar"; }catch{} } }
+  if (!r.length){ try{ r=await nominatim(qq); }catch{} }
+  return {r,how};
+}
+function showAddr(list,head){
+  const box=$("#sugg");
+  box.innerHTML=(head?`<div class="hint" style="padding:6px 8px">${head}</div>`:"")+list.map((g,i)=>`<button data-a="${i}"><span>${esc(g.name)}</span><small>${esc(g.type)}</small></button>`).join("");
+  box.hidden=false;
+  box.querySelectorAll("button").forEach(b=>b.onclick=()=>{ const g=list[+b.dataset.a]; box.hidden=true; $("#q").value=g.name;
+    $("#qhint").innerHTML="Address search: © OpenStreetMap contributors (Nominatim, Photon).";
+    gotoPoint(g.lat,g.lon,g.name.split(",")[0],g.zoom||16);
+    pin?.remove(); pin=L.circleMarker([g.lat,g.lon],{radius:7,color:"#fff",weight:2,fillColor:"#111",fillOpacity:1,pane:"selp"}).bindTooltip(esc(g.name.split(",")[0]),{permanent:true,direction:"right"}).addTo(map); });
 }
 $("#locate").onclick = async ()=>{
   const q=$("#q").value.trim(); if(q.length<3) return;
   $("#locate").disabled=true; $("#qhint").textContent="Searching the address…";
   try{
-    const r = await geocode(q);
-    if (!r.length){ $("#qhint").textContent="No address found. Check the spelling, e.g. “Hauptstraße 4b, Stuttgart”."; return; }
-    const box=$("#sugg");
-    box.innerHTML = r.map((g,i)=>`<button data-a="${i}"><span>${esc(g.display_name.split(",").slice(0,3).join(","))}</span><small>${esc(g.type||g.category||"address")}</small></button>`).join("");
-    box.hidden=false; $("#qhint").textContent="Choose the right address.";
-    box.querySelectorAll("button").forEach(b=>b.onclick=()=>{ const g=r[+b.dataset.a]; box.hidden=true; $("#qhint").textContent="Address search: © OpenStreetMap contributors (Nominatim).";
-      const label=g.display_name.split(",").slice(0,2).join(",").trim(); gotoPoint(+g.lat,+g.lon,label,16);
-      pin?.remove(); pin=L.circleMarker([+g.lat,+g.lon],{radius:7,color:"#fff",weight:2,fillColor:"#111",fillOpacity:1,pane:"selp"}).bindTooltip(esc(label),{permanent:true,direction:"right"}).addTo(map); });
-    if (r.length===1) box.querySelector("button").click();
+    const {r,how}=await geocode(q);
+    if (r.length){
+      $("#qhint").textContent = how==="similar" ? "No exact match. Did you mean one of these?" : "Choose the right address.";
+      showAddr(r, how==="similar" ? "Did you mean…" : "");
+      if (r.length===1 && !how) $("#sugg button").click();
+      return;
+    }
+    const towns=fuzzyTowns(q);
+    if (towns.length){
+      const fixed=towns.map(t=>({lat:t.lat,lon:t.lon,name:q.replace(new RegExp(t.word,"i"),"").replace(/^[\s,]+|[\s,]+$/g,"") ? `${t.name} (instead of “${t.word}”)` : t.name,type:"town / village",zoom:13,retry:q.replace(new RegExp(t.word,"i"),t.name.split(/[ ,(]/)[0])}));
+      const seen=new Set(); for (let i=fixed.length-1;i>=0;i--){ if(seen.has(fixed[i].retry)) fixed.splice(i,1); else seen.add(fixed[i].retry); }
+      const box=$("#sugg");
+      box.innerHTML=`<div class="hint" style="padding:6px 8px">Not found. Did you mean…</div>`+fixed.map((g,i)=>`<button data-f="${i}"><span>${esc(g.retry)}</span><small>search again</small></button>`).join("");
+      box.hidden=false; $("#qhint").textContent="Spelling corrected from the town list. Click to search again.";
+      box.querySelectorAll("button").forEach(b=>b.onclick=()=>{ $("#q").value=fixed[+b.dataset.f].retry; box.hidden=true; $("#locate").click(); });
+      return;
+    }
+    $("#qhint").textContent="Nothing similar found. Try only the street and town, e.g. “Hauptstraße 4, Stuttgart”.";
   }catch{ $("#qhint").textContent="The address service could not be reached. Try again in a moment."; }
   finally{ $("#locate").disabled=false; }
 };
+// live suggestions while typing an address (typo-tolerant)
+let acT=null, acQ="";
+$("#q").addEventListener("input",()=>{
+  const q=$("#q").value.trim(); clearTimeout(acT);
+  if (q.length<5 || !(/\d/.test(q) || /stra(ss|ß)e|str\.|weg|platz|allee|gasse|ring\b/i.test(q))) return;
+  acT=setTimeout(async()=>{ acQ=q; try{ const r=await photon(cleanAddr(q)); if(acQ!==$("#q").value.trim()||!r.length) return; showAddr(r.slice(0,6),"Addresses"); }catch{} },450);
+});
 $("#q").addEventListener("keydown",e=>{ if(e.key!=="Enter") return; e.preventDefault(); const q=norm($("#q").value.trim()); const hit=gaz.find(g=>norm(g.name)===q && !g.f); if(hit) pickGaz(hit); else $("#locate").click(); });
 document.addEventListener("click",e=>{ if(!e.target.closest("#sugg")&&e.target.id!=="q") $("#sugg").hidden=true; });
 
@@ -1637,14 +1700,17 @@ function drawTimeline(all){
     const r=document.getElementById("row-"+d.list[0]._id); if (r){ const rep=$("#report"); rep.scrollTop = r.offsetTop - rep.querySelector(".head").offsetHeight - 40; d.list.forEach(e=>{ const x=document.getElementById("row-"+e._id); x?.classList.add("flash"); setTimeout(()=>x?.classList.remove("flash"),1600); }); }
   });
 }
-let mini=null, miniLayer=null, miniSel=null, miniMarks=new Map();
+let mini=null, miniLayer=null, miniSel=null, miniMarks=new Map(), miniBase=null, miniOsm=null;
+function setMiniStyle(){ if(!mini) return; const osm=S.mapStyle==="osm";
+  if (osm){ miniOsm=miniOsm||osmTiles(); miniOsm.addTo(mini); mini.removeLayer(miniBase); } else { miniOsm&&mini.removeLayer(miniOsm); miniBase.addTo(mini); } }
 function ensureMini(){
   if (mini) return mini;
   const host=document.createElement("div"); host.id="minimap"; document.body.appendChild(host);
   mini=L.map(host,{zoomControl:true,attributionControl:false,preferCanvas:true,minZoom:5,maxZoom:15,zoomSnap:.5}).setView([START.lat,START.lon],9);
   panes.forEach((p,i)=>{mini.createPane(p).style.zIndex = 200+i*10;});
-  const st=style();
-  for (const n of ["countries","urban","lakes","rivers","rail"]) if (geo[n]) L.geoJSON(geo[n],{style:st[n],interactive:false}).addTo(mini);
+  const st=style(); miniBase=L.layerGroup().addTo(mini);
+  for (const n of ["countries","urban","lakes","rivers","rail"]) if (geo[n]) L.geoJSON(geo[n],{style:st[n],interactive:false}).addTo(miniBase);
+  mini.createPane("tiles").style.zIndex=150; setMiniStyle();
   miniLayer=L.layerGroup().addTo(mini);
   return mini;
 }
