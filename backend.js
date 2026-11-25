@@ -234,6 +234,14 @@
     },
     async listContributions() { if (!state.isOwner) return []; const { data } = await sb.from("contributions").select("*").order("created_at", { ascending: false }).limit(200); return data || []; },
     async deleteContribution(id) { if (!state.isOwner) return; await sb.from("contributions").delete().eq("id", id); },
+    // ---- visitor sign-up (name + company) ----
+    async registerVisitor(row) {
+      if (!sb || state.isOwner) return false;
+      const { error } = await sb.from("visitors").insert(row);
+      if (error) throw error; return true;
+    },
+    async listVisitors() { if (!state.isOwner) return []; const { data } = await sb.from("visitors").select("*").order("created_at", { ascending: false }).limit(1000); return data || []; },
+    async deleteVisitor(id) { if (!state.isOwner) return; await sb.from("visitors").delete().eq("id", id); },
     localCount: () => COLS.reduce((n, c) => n + state.local[c].size, 0),
     ready: () => state.ready
   };

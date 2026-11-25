@@ -749,7 +749,7 @@ a.btn.primary{color:var(--panel)}
 body.osm .lbl-place{display:none}#mapstyle .btn.on{background:var(--ink);color:var(--panel)}
 .maplegend.senslg{left:auto;right:10px;bottom:28px;max-width:240px}.sgrad{height:10px;border-radius:5px;background:linear-gradient(90deg,#fff3b0,#ffd166,#f4a261,#e85d04,#9d0208,#6a040f)}
 .panel{border:1px solid var(--line);border-radius:6px;background:var(--panel)}.panel>summary{list-style:none;display:flex;align-items:center;gap:6px;padding:8px 10px;cursor:pointer;font-family:var(--f-display);font-size:15px;letter-spacing:.04em;text-transform:uppercase;user-select:none}.panel>summary::-webkit-details-marker{display:none}.panel>summary .chev{transition:transform .15s;display:inline-block;color:var(--muted)}.panel[open]>summary .chev{transform:rotate(90deg)}.panel>summary .mv{margin-left:auto;display:flex;gap:2px}.panel>summary .mv button,.sec .mv button{border:1px solid var(--line);background:var(--bg);border-radius:3px;width:22px;height:22px;line-height:18px;cursor:pointer;color:var(--muted);padding:0}.panel>.pbody{padding:2px 10px 10px;display:flex;flex-direction:column;gap:8px}.panel>.pbody>.group>.lbl:first-child,.panel>.pbody>.group>label:first-child{display:none}
-.wl{min-width:118px}.wv{min-width:38px;text-align:right}
+.vlist{display:flex;flex-direction:column;gap:6px;max-height:360px;overflow:auto}.wl{min-width:118px}.wv{min-width:38px;text-align:right}
 .sec>h3{cursor:pointer;user-select:none}.sec>h3 .mv{margin-left:auto;display:flex;gap:2px}.sec>h3 .chev{color:var(--muted);transition:transform .15s;display:inline-block}.sec:not(.collapsed)>h3 .chev{transform:rotate(90deg)}.sec.collapsed>*:not(h3){display:none!important}
 .pv-head{display:flex;flex-wrap:wrap;gap:6px;align-items:center}.pv-loc{font-family:var(--f-mono);font-size:12px;background:color-mix(in srgb,var(--sel) 14%,transparent);color:var(--sel);padding:2px 8px;border-radius:3px}
 .lines{font-family:var(--f-mono);font-size:12.5px;line-height:1.55;background:var(--bg);border:1px solid var(--line);border-radius:4px;max-height:55vh;overflow:auto;padding:6px 0}.lines .ln{display:grid;grid-template-columns:44px 1fr;gap:8px;padding:0 10px 0 0;white-space:pre-wrap}.lines .ln i{font-style:normal;color:var(--muted);text-align:right;user-select:none}.lines .ln.hit{background:color-mix(in srgb,var(--warn) 14%,transparent)}.lines .gap{color:var(--muted);text-align:center;font-size:11px;padding:2px}.lines .pbreak{height:8px}
@@ -815,7 +815,7 @@ ul.steps{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:3px;f
 .empty{color:var(--muted);font-size:13px;padding:6px 0}
 /* dialogs */
 .modal{position:fixed;inset:0;z-index:2000;background:color-mix(in srgb,#000 45%,transparent);display:flex;align-items:center;justify-content:center;padding:16px}
-.modal[hidden]{display:none}
+.modal[hidden]{display:none}.modal.gate{z-index:2100;backdrop-filter:blur(3px)}
 .dlg{background:var(--panel);border:1px solid var(--line);border-radius:6px;width:min(760px,100%);max-height:90vh;display:flex;flex-direction:column}
 .dlg .dh{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--line)}
 .dlg .dh h2{font-size:20px}
@@ -1012,6 +1012,7 @@ header.top{flex-wrap:nowrap}header.top .sub{white-space:nowrap;overflow:hidden;t
       <div class="find" id="modebox" data-title="Mode &amp; imports"></div>
       <div class="group"><label for="txtq">Search the text of all documents</label><input type="text" id="txtq" placeholder="e.g. Blindgänger, Heilbronn, 4th Armd, Flak"><div id="txtres" class="group"></div></div>
       <div class="group" id="contribs" data-title="Visitor contributions"></div>
+      <div class="group" id="visitors" data-title="Visitors"></div>
       <div class="group" id="srclist" data-title="Documents"></div>
     </div>
     <div class="pane" id="p-dict" hidden>
@@ -1030,6 +1031,20 @@ header.top{flex-wrap:nowrap}header.top .sub{white-space:nowrap;overflow:hidden;t
 </div>
 
 <nav class="mnav" id="mnav"><button data-mv="side"><b>☰</b>Controls</button><button data-mv="map" class="on"><b>◎</b>Map</button><button data-mv="report"><b>▤</b>Report</button></nav>
+<div class="modal gate" id="m-gate" hidden>
+  <div class="dlg" role="dialog" aria-modal="true" aria-labelledby="mg-title" style="max-width:440px">
+    <div class="dh"><h2 id="mg-title">Welcome to the Kampfmittel History Map</h2></div>
+    <div class="db"><span class="hint">Before you start, please tell me who you are. It helps me see who uses the tool and who to talk to about feedback.</span>
+      <div class="group"><label for="g-name">Name *</label><input type="text" id="g-name" autocomplete="name" maxlength="120"></div>
+      <div class="group"><label for="g-comp">Company / organisation *</label><input type="text" id="g-comp" autocomplete="organization" maxlength="160"></div>
+      <div class="group"><label for="g-role">Role <span class="hint">(optional)</span></label><input type="text" id="g-role" autocomplete="organization-title" maxlength="120" placeholder="e.g. Fachplaner Kampfmittel, GIS analyst"></div>
+      <div class="group"><label for="g-mail">E-mail <span class="hint">(optional, only if you'd like me to reply)</span></label><input type="text" id="g-mail" autocomplete="email" maxlength="200"></div>
+      <label class="chk"><input type="checkbox" id="g-ok">I agree that my name and company are stored so the map owner can see who uses the tool.</label>
+      <span class="hint">Stored only for this purpose, never shared or sold. To have your entry deleted, message Sumit Rahangdale on LinkedIn.</span>
+      <span class="hint" id="g-msg" style="color:var(--warn)"></span></div>
+    <div class="df" style="justify-content:space-between"><button class="btn" id="g-owner">Owner sign-in</button><button class="btn primary" id="g-go">Start</button></div>
+  </div>
+</div>
 <div class="modal" id="m-login" hidden>
   <div class="dlg" role="dialog" aria-modal="true" aria-labelledby="ml-title" style="max-width:380px">
     <div class="dh"><h2 id="ml-title">Owner sign-in</h2><button class="btn x" data-close>Close</button></div>
@@ -1107,7 +1122,7 @@ header.top{flex-wrap:nowrap}header.top .sub{white-space:nowrap;overflow:hidden;t
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script>window.APP_VERSION="20261125-0230";</script>
+<script>window.APP_VERSION="20261125-1150";</script>
 <script src="config.js"></script>
 <script src="backend.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
@@ -2035,7 +2050,7 @@ async function shareFindings(id){
   if (!src||!evs.length) return;
   const keep=["date","place","placeAsWritten","lat","lon","locPrecision","missionClass","targetType","force","unit","army","aircraft","aircraftCount","summary","quote","page"];
   const events=evs.slice(0,2000).map(e=>Object.fromEntries(keep.filter(k=>e[k]!=null&&e[k]!=="").map(k=>[k,typeof e[k]==="string"?e[k].slice(0,400):e[k]])));
-  try{ await KHM.contribute({doc_title:String(src.title).slice(0,300),events,snippets:events.map(e=>`${e.date} | ${e.place} | ${e.quote||e.summary||""}`).join("\n").slice(0,200000)}); log(`  ${events.length} findings shared with the map owner. Thank you!`); }
+  try{ await KHM.contribute({doc_title:String(src.title).slice(0,300),note:visitorTag().slice(0,1000)||null,events,snippets:events.map(e=>`${e.date} | ${e.place} | ${e.quote||e.summary||""}`).join("\n").slice(0,200000)}); log(`  ${events.length} findings shared with the map owner. Thank you!`); }
   catch(e){ log("  findings could not be shared ("+(e.message||"error")+")"); }
 }
 async function searchTexts(q){
@@ -2053,12 +2068,45 @@ async function searchTexts(q){
 async function renderContribs(){
   const box=$("#contribs"); if(!box) return; if(!KHM.isOwner){ box.innerHTML=""; return; }
   let list=[]; try{ list=await KHM.listContributions(); }catch{}
-  box.innerHTML = `<span class="lbl">Visitor contributions (${list.length})</span>` + (list.length ? list.map((c,i)=>`<div class="find"><b>${esc(c.doc_title)}</b><span class="hint">${new Date(c.created_at).toLocaleString("de-DE")} · ${c.events.length} findings</span><span class="hint" style="white-space:pre-wrap;max-height:120px;overflow:auto">${esc(c.events.slice(0,8).map(e=>`${e.date} · ${e.place}${e.force?" · "+e.force:""}${e.unit?" · "+e.unit:""} — ${e.quote||e.summary||""}`).join("\n"))}${c.events.length>8?"\n…":""}</span><div class="row"><button class="btn primary" data-ca="${i}">Add to my map</button><button class="btn" data-cd="${i}">Discard</button></div></div>`).join("") : `<span class="hint">None yet. When visitors add documents and agree to share, the dates, places and forces found arrive here for you to check.</span>`);
+  box.innerHTML = `<span class="lbl">Visitor contributions (${list.length})</span>` + (list.length ? list.map((c,i)=>`<div class="find"><b>${esc(c.doc_title)}</b><span class="hint">${new Date(c.created_at).toLocaleString("de-DE")} · ${c.events.length} findings${c.note?" · from "+esc(c.note):""}</span><span class="hint" style="white-space:pre-wrap;max-height:120px;overflow:auto">${esc(c.events.slice(0,8).map(e=>`${e.date} · ${e.place}${e.force?" · "+e.force:""}${e.unit?" · "+e.unit:""} — ${e.quote||e.summary||""}`).join("\n"))}${c.events.length>8?"\n…":""}</span><div class="row"><button class="btn primary" data-ca="${i}">Add to my map</button><button class="btn" data-cd="${i}">Discard</button></div></div>`).join("") : `<span class="hint">None yet. When visitors add documents and agree to share, the dates, places and forces found arrive here for you to check.</span>`);
   box.querySelectorAll("[data-ca]").forEach(b=>b.onclick=async()=>{ const c=list[+b.dataset.ca]; b.disabled=true; const sid="contrib-"+c.id.slice(0,8);
     await S.db.doc("sources/"+sid).set({title:c.doc_title+" (visitor contribution)",author:"Visitor contribution",kind:"chronology",web:false,note:`Added from a visitor's document on ${new Date(c.created_at).toLocaleDateString("de-DE")}. Only the findings and short quotes were shared, not the file. Check before relying on it.`,createdAt:new Date().toISOString()});
     await KHM.putMany("events", c.events.map((e,k)=>[`${sid}-${String(k).padStart(4,"0")}`,{...e,sourceId:sid,auto:true,method:"contribution",role:"unknown"}]));
     await KHM.deleteContribution(c.id); renderContribs(); });
   box.querySelectorAll("[data-cd]").forEach(b=>b.onclick=()=>confirmDlg("Discard this contribution?",async()=>{ await KHM.deleteContribution(list[+b.dataset.cd].id); renderContribs(); }));
+}
+/* ---------- visitor gate: name + company before use ---------- */
+const VKEY="khm-visitor";
+function visitorKnown(){ try{ return !!JSON.parse(localStorage.getItem(VKEY)||"null")?.name; }catch{ return false; } }
+async function visitorGate(){
+  try{ await KHM.ready(); }catch{}
+  if (KHM.isOwner || visitorKnown() || !KHM.configured) return;
+  const m=$("#m-gate"); m.hidden=false; setTimeout(()=>$("#g-name").focus(),50);
+  $("#g-owner").onclick=()=>{ m.hidden=true; openModal("#m-login"); $("#li-email").focus(); $("#m-login").querySelector("[data-close]").addEventListener("click",()=>{ if(!KHM.isOwner) m.hidden=false; },{once:true}); };
+  const go=async()=>{
+    const name=$("#g-name").value.trim(), company=$("#g-comp").value.trim(), role=$("#g-role").value.trim(), email=$("#g-mail").value.trim();
+    const msg=$("#g-msg");
+    if (name.length<2) { msg.textContent="Please enter your name."; $("#g-name").focus(); return; }
+    if (company.length<2) { msg.textContent="Please enter your company or organisation (or \"private\")."; $("#g-comp").focus(); return; }
+    if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { msg.textContent="The e-mail address doesn't look right (or leave it empty)."; $("#g-mail").focus(); return; }
+    if (!$("#g-ok").checked) { msg.textContent="Please tick the box to agree."; return; }
+    const b=$("#g-go"); b.disabled=true; b.textContent="Starting…"; msg.textContent="";
+    const row={name,company,role:role||null,email:email||null,lang:(navigator.language||"").slice(0,20)};
+    try{ await KHM.registerVisitor(row); }catch(e){ console.warn("visitor not stored",e); }
+    try{ localStorage.setItem(VKEY,JSON.stringify({name,company,at:new Date().toISOString()})); }catch{}
+    m.hidden=true;
+  };
+  $("#g-go").onclick=go;
+  m.querySelectorAll("input[type=text]").forEach(i=>i.onkeydown=e=>{ if(e.key==="Enter") go(); });
+}
+function visitorTag(){ try{ const v=JSON.parse(localStorage.getItem(VKEY)||"null"); return v?.name?`${v.name} (${v.company})`:""; }catch{ return ""; } }
+async function renderVisitors(){
+  const box=$("#visitors"); if(!box) return; if(!KHM.isOwner){ box.innerHTML=""; return; }
+  let list=[]; try{ list=await KHM.listVisitors(); }catch{}
+  const csv=()=>{ const cols=["Date","Name","Company","Role","E-mail","Language"]; const t="\ufeff"+[cols,...list.map(v=>[new Date(v.created_at).toLocaleString("de-DE"),v.name,v.company,v.role,v.email,v.lang])].map(r=>r.map(csvCell).join(";")).join("\r\n"); saveBlob(new Blob([t],{type:"text/csv;charset=utf-8"}),"visitors_"+new Date().toISOString().slice(0,10)+".csv"); };
+  box.innerHTML=`<span class="lbl">Visitors (${list.length})</span>`+(list.length?`<button class="btn" id="v-csv" style="width:max-content">Download list (CSV)</button><div class="vlist">${list.map((v,i)=>`<div class="find"><b>${esc(v.name)} · ${esc(v.company)}</b><span class="hint">${new Date(v.created_at).toLocaleString("de-DE")}${v.role?" · "+esc(v.role):""}${v.email?" · "+esc(v.email):""}</span><button class="btn" data-vd="${i}" style="width:max-content">Delete</button></div>`).join("")}</div>`:`<span class="hint">Nobody yet. Visitors enter their name and company before using the map; they appear here (only you can see this list). If this stays empty, run supabase/update-3-visitors.sql in Supabase.</span>`);
+  $("#v-csv")&&($("#v-csv").onclick=csv);
+  box.querySelectorAll("[data-vd]").forEach(b=>b.onclick=()=>confirmDlg("Delete this visitor entry?",async()=>{ await KHM.deleteVisitor(list[+b.dataset.vd].id); renderVisitors(); }));
 }
 async function importBundle(file){
   const st=$("#modebox"); st.insertAdjacentHTML("beforeend",`<span class="hint" id="bmsg">Reading the bundle…</span>`);
@@ -2087,7 +2135,7 @@ function renderAuth(){
   mb.innerHTML = KHM.isOwner
     ? `<b>Owner mode</b><span>Documents you add are stored in your private Supabase storage; map points and sources are saved in your database and shown to visitors (files and page texts stay private).</span><label class="btn" style="width:max-content">Import page-text bundle (.json.gz)<input type="file" id="bundle" accept=".gz,.json.gz" hidden></label><label class="btn" style="width:max-content">Import find reports (.json.gz)<input type="file" id="findsfile" accept=".gz,.json.gz" hidden></label>`
     : `<b>Visitor mode</b><span>Add your own chronologies, diaries or reports: the files are read and mapped in your browser and stay only in this browser. If you agree when uploading, the dates, places and forces found (not the files) are sent to the map owner, who checks them before adding them to the public map. ${KHM.localCount()?`You have ${KHM.localCount()} items stored here.`:""}</span>${KHM.localCount()?`<button class="btn" id="clearlocal" style="width:max-content">Delete my local data</button>`:""}`;
-  renderContribs(); { const cp=$("#contribs")?.closest(".panel"); if(cp) cp.hidden=!KHM.isOwner; } $("#u-share-l").hidden = KHM.isOwner || !KHM.configured;
+  renderContribs(); renderVisitors(); { const cp=$("#contribs")?.closest(".panel"); if(cp) cp.hidden=!KHM.isOwner; const vp=$("#visitors")?.closest(".panel"); if(vp) vp.hidden=!KHM.isOwner; } $("#u-share-l").hidden = KHM.isOwner || !KHM.configured;
   let tq; $("#txtq").oninput=()=>{ clearTimeout(tq); tq=setTimeout(()=>searchTexts($("#txtq").value),400); };
   $("#findsfile")&&($("#findsfile").onchange=e=>e.target.files[0]&&importFinds(e.target.files[0]));
   { const fl=document.querySelector('[data-ly="finds"]')?.closest("label"); if(fl) fl.hidden=!KHM.isOwner; }
@@ -2808,7 +2856,7 @@ function subscribe(col, onDocs){
   subscribe("sources", docs=>{ S.sources=Object.fromEntries(docs.map(d=>[d._id,d])); renderSources(); renderSoon(); });
   subscribe("ordnance", docs=>{ S.ord=docs; renderDict(); renderSources(); renderSoon(); });
   claude.use("sample").then(s=>{ S.sample=s; renderSoon(); renderSources(); renderAuth(); });
-  initFilters(); makePanels($("#p-area"),"area"); makePanels($("#p-src"),"src"); renderAuth();
+  initFilters(); makePanels($("#p-area"),"area"); makePanels($("#p-src"),"src"); renderAuth(); visitorGate();
   claude.use("assets").then(a=>{ S.assets=a; if(!a) $("#srchint").textContent=""; });
 })();
 </script>
