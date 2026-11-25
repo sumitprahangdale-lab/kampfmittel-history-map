@@ -1034,12 +1034,12 @@ header.top{flex-wrap:nowrap}header.top .sub{white-space:nowrap;overflow:hidden;t
 <div class="modal gate" id="m-gate" hidden>
   <div class="dlg" role="dialog" aria-modal="true" aria-labelledby="mg-title" style="max-width:440px">
     <div class="dh"><h2 id="mg-title">Welcome to the Kampfmittel History Map</h2></div>
-    <div class="db"><span class="hint">Before you start, please tell me who you are. It helps me see who uses the tool and who to talk to about feedback.</span>
+    <div class="db"><span class="hint">Before you start, please tell me your name. It helps me see who uses the tool and who to talk to about feedback.</span>
       <div class="group"><label for="g-name">Name *</label><input type="text" id="g-name" autocomplete="name" maxlength="120"></div>
-      <div class="group"><label for="g-comp">Company / organisation *</label><input type="text" id="g-comp" autocomplete="organization" maxlength="160"></div>
+      <div class="group"><label for="g-comp">Company / organisation <span class="hint">(optional)</span></label><input type="text" id="g-comp" autocomplete="organization" maxlength="160"></div>
       <div class="group"><label for="g-role">Role <span class="hint">(optional)</span></label><input type="text" id="g-role" autocomplete="organization-title" maxlength="120" placeholder="e.g. Fachplaner Kampfmittel, GIS analyst"></div>
       <div class="group"><label for="g-mail">E-mail <span class="hint">(optional, only if you'd like me to reply)</span></label><input type="text" id="g-mail" autocomplete="email" maxlength="200"></div>
-      <label class="chk"><input type="checkbox" id="g-ok">I agree that my name and company are stored so the map owner can see who uses the tool.</label>
+      <label class="chk"><input type="checkbox" id="g-ok">I agree that my name (and company, if given) is stored so the map owner can see who uses the tool.</label>
       <span class="hint">Stored only for this purpose, never shared or sold. To have your entry deleted, message Sumit Rahangdale on LinkedIn.</span>
       <span class="hint" id="g-msg" style="color:var(--warn)"></span></div>
     <div class="df" style="justify-content:space-between"><button class="btn" id="g-owner">Owner sign-in</button><button class="btn primary" id="g-go">Start</button></div>
@@ -1122,7 +1122,7 @@ header.top{flex-wrap:nowrap}header.top .sub{white-space:nowrap;overflow:hidden;t
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script>window.APP_VERSION="20261125-1150";</script>
+<script>window.APP_VERSION="20261125-1200";</script>
 <script src="config.js"></script>
 <script src="backend.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
@@ -2087,24 +2087,23 @@ async function visitorGate(){
     const name=$("#g-name").value.trim(), company=$("#g-comp").value.trim(), role=$("#g-role").value.trim(), email=$("#g-mail").value.trim();
     const msg=$("#g-msg");
     if (name.length<2) { msg.textContent="Please enter your name."; $("#g-name").focus(); return; }
-    if (company.length<2) { msg.textContent="Please enter your company or organisation (or \"private\")."; $("#g-comp").focus(); return; }
     if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { msg.textContent="The e-mail address doesn't look right (or leave it empty)."; $("#g-mail").focus(); return; }
     if (!$("#g-ok").checked) { msg.textContent="Please tick the box to agree."; return; }
     const b=$("#g-go"); b.disabled=true; b.textContent="Starting…"; msg.textContent="";
-    const row={name,company,role:role||null,email:email||null,lang:(navigator.language||"").slice(0,20)};
+    const row={name,company:company||null,role:role||null,email:email||null,lang:(navigator.language||"").slice(0,20)};
     try{ await KHM.registerVisitor(row); }catch(e){ console.warn("visitor not stored",e); }
-    try{ localStorage.setItem(VKEY,JSON.stringify({name,company,at:new Date().toISOString()})); }catch{}
+    try{ localStorage.setItem(VKEY,JSON.stringify({name,company:company||"",at:new Date().toISOString()})); }catch{}
     m.hidden=true;
   };
   $("#g-go").onclick=go;
   m.querySelectorAll("input[type=text]").forEach(i=>i.onkeydown=e=>{ if(e.key==="Enter") go(); });
 }
-function visitorTag(){ try{ const v=JSON.parse(localStorage.getItem(VKEY)||"null"); return v?.name?`${v.name} (${v.company})`:""; }catch{ return ""; } }
+function visitorTag(){ try{ const v=JSON.parse(localStorage.getItem(VKEY)||"null"); return v?.name?(v.company?`${v.name} (${v.company})`:v.name):""; }catch{ return ""; } }
 async function renderVisitors(){
   const box=$("#visitors"); if(!box) return; if(!KHM.isOwner){ box.innerHTML=""; return; }
   let list=[]; try{ list=await KHM.listVisitors(); }catch{}
   const csv=()=>{ const cols=["Date","Name","Company","Role","E-mail","Language"]; const t="\ufeff"+[cols,...list.map(v=>[new Date(v.created_at).toLocaleString("de-DE"),v.name,v.company,v.role,v.email,v.lang])].map(r=>r.map(csvCell).join(";")).join("\r\n"); saveBlob(new Blob([t],{type:"text/csv;charset=utf-8"}),"visitors_"+new Date().toISOString().slice(0,10)+".csv"); };
-  box.innerHTML=`<span class="lbl">Visitors (${list.length})</span>`+(list.length?`<button class="btn" id="v-csv" style="width:max-content">Download list (CSV)</button><div class="vlist">${list.map((v,i)=>`<div class="find"><b>${esc(v.name)} · ${esc(v.company)}</b><span class="hint">${new Date(v.created_at).toLocaleString("de-DE")}${v.role?" · "+esc(v.role):""}${v.email?" · "+esc(v.email):""}</span><button class="btn" data-vd="${i}" style="width:max-content">Delete</button></div>`).join("")}</div>`:`<span class="hint">Nobody yet. Visitors enter their name and company before using the map; they appear here (only you can see this list). If this stays empty, run supabase/update-3-visitors.sql in Supabase.</span>`);
+  box.innerHTML=`<span class="lbl">Visitors (${list.length})</span>`+(list.length?`<button class="btn" id="v-csv" style="width:max-content">Download list (CSV)</button><div class="vlist">${list.map((v,i)=>`<div class="find"><b>${esc(v.name)}${v.company&&v.company!=="–"?" · "+esc(v.company):""}</b><span class="hint">${new Date(v.created_at).toLocaleString("de-DE")}${v.role?" · "+esc(v.role):""}${v.email?" · "+esc(v.email):""}</span><button class="btn" data-vd="${i}" style="width:max-content">Delete</button></div>`).join("")}</div>`:`<span class="hint">Nobody yet. Visitors enter their name and company before using the map; they appear here (only you can see this list). If this stays empty, run supabase/update-3-visitors.sql in Supabase.</span>`);
   $("#v-csv")&&($("#v-csv").onclick=csv);
   box.querySelectorAll("[data-vd]").forEach(b=>b.onclick=()=>confirmDlg("Delete this visitor entry?",async()=>{ await KHM.deleteVisitor(list[+b.dataset.vd].id); renderVisitors(); }));
 }
