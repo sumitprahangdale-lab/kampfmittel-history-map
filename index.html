@@ -749,6 +749,7 @@ a.btn.primary{color:var(--panel)}
 body.osm .lbl-place{display:none}#mapstyle .btn.on{background:var(--ink);color:var(--panel)}
 .maplegend.senslg{left:auto;right:10px;bottom:28px;max-width:240px}.sgrad{height:10px;border-radius:5px;background:linear-gradient(90deg,#fff3b0,#ffd166,#f4a261,#e85d04,#9d0208,#6a040f)}
 .panel{border:1px solid var(--line);border-radius:6px;background:var(--panel)}.panel>summary{list-style:none;display:flex;align-items:center;gap:6px;padding:8px 10px;cursor:pointer;font-family:var(--f-display);font-size:15px;letter-spacing:.04em;text-transform:uppercase;user-select:none}.panel>summary::-webkit-details-marker{display:none}.panel>summary .chev{transition:transform .15s;display:inline-block;color:var(--muted)}.panel[open]>summary .chev{transform:rotate(90deg)}.panel>summary .mv{margin-left:auto;display:flex;gap:2px}.panel>summary .mv button,.sec .mv button{border:1px solid var(--line);background:var(--bg);border-radius:3px;width:22px;height:22px;line-height:18px;cursor:pointer;color:var(--muted);padding:0}.panel>.pbody{padding:2px 10px 10px;display:flex;flex-direction:column;gap:8px}.panel>.pbody>.group>.lbl:first-child,.panel>.pbody>.group>label:first-child{display:none}
+.wl{min-width:118px}.wv{min-width:38px;text-align:right}
 .sec>h3{cursor:pointer;user-select:none}.sec>h3 .mv{margin-left:auto;display:flex;gap:2px}.sec>h3 .chev{color:var(--muted);transition:transform .15s;display:inline-block}.sec:not(.collapsed)>h3 .chev{transform:rotate(90deg)}.sec.collapsed>*:not(h3){display:none!important}
 .pv-head{display:flex;flex-wrap:wrap;gap:6px;align-items:center}.pv-loc{font-family:var(--f-mono);font-size:12px;background:color-mix(in srgb,var(--sel) 14%,transparent);color:var(--sel);padding:2px 8px;border-radius:3px}
 .lines{font-family:var(--f-mono);font-size:12.5px;line-height:1.55;background:var(--bg);border:1px solid var(--line);border-radius:4px;max-height:55vh;overflow:auto;padding:6px 0}.lines .ln{display:grid;grid-template-columns:44px 1fr;gap:8px;padding:0 10px 0 0;white-space:pre-wrap}.lines .ln i{font-style:normal;color:var(--muted);text-align:right;user-select:none}.lines .ln.hit{background:color-mix(in srgb,var(--warn) 14%,transparent)}.lines .gap{color:var(--muted);text-align:center;font-size:11px;padding:2px}.lines .pbreak{height:8px}
@@ -980,6 +981,19 @@ header.top{flex-wrap:nowrap}header.top .sub{white-space:nowrap;overflow:hidden;t
         <label class="chk"><input type="checkbox" id="f-mapyear" checked>Map follows the timeline year</label>
         <div class="row"><button class="btn" id="f-reset">Reset filters</button><span class="hint" id="f-count"></span></div>
       </div>
+      <div class="group" id="wctl" data-title="Analysis weights">
+        <span class="lbl">Analysis weights · your own conditions</span>
+        <span class="hint">Sensitivity score (Bavaria): how much each source counts</span>
+        <div class="row"><label class="hint wl" for="w-f">Finds</label><input type="range" id="w-f" min="0" max="100" step="5" style="flex:1"><span class="mono wv" id="w-fv"></span></div>
+        <div class="row"><label class="hint wl" for="w-a">Air attacks</label><input type="range" id="w-a" min="0" max="100" step="5" style="flex:1"><span class="mono wv" id="w-av"></span></div>
+        <div class="row"><label class="hint wl" for="w-g">Ground fighting</label><input type="range" id="w-g" min="0" max="100" step="5" style="flex:1"><span class="mono wv" id="w-gv"></span></div>
+        <span class="hint">Rate an area <b>high</b> when</span>
+        <div class="row"><label class="hint wl" for="w-he">High explosive (t) ≥</label><input type="number" id="w-he" min="0" step="10" style="width:84px"></div>
+        <div class="row"><label class="hint wl" for="w-hv">Heavy-bomber attacks ≥</label><input type="number" id="w-hv" min="1" step="1" style="width:84px"></div>
+        <div class="row"><label class="hint wl" for="w-gd">Ground-fighting days ≥</label><input type="number" id="w-gd" min="1" step="1" style="width:84px"></div>
+        <label class="chk"><input type="checkbox" id="w-fl">A long-delay fuze flag also counts as high</label>
+        <div class="row"><button class="btn" id="w-reset">Reset to defaults</button><span class="hint" id="w-note"></span></div>
+      </div>
       <div class="group">
         <span class="lbl">Show events from</span>
         <div class="group" id="srcfilter"></div>
@@ -1093,11 +1107,12 @@ header.top{flex-wrap:nowrap}header.top .sub{white-space:nowrap;overflow:hidden;t
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script>window.APP_VERSION="20261125-0015";</script>
+<script>window.APP_VERSION="20261125-0230";</script>
 <script src="config.js"></script>
 <script src="backend.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
 <script src="vendor/leaflet-heat.js"></script>
+<script src="vendor/html-to-image.js"></script>
 <script>
 "use strict";
 /* ---------- constants ---------- */
@@ -1142,6 +1157,111 @@ const S = {events:[], sources:{}, ord:[], db:null, assets:null, sample:null,
   from:"1939-09-01", to:"1945-12-31", classes:new Set(Object.keys(CLASSES)), dud:0.10,
   layers:{urban:true, rail:true, roads:false, rivers:true, districts:true, sens:false, finds:false}, loaded:{events:false}};
 const pagesCache = {};
+
+/* ---------- analysis weights (user's own conditions) ---------- */
+const W_DEF = {f:50, a:30, g:20, he:100, hv:5, gd:3, fl:true};
+const W = (()=>{ try{ return {...W_DEF, ...JSON.parse(localStorage.getItem("khm-w")||"{}")}; }catch{ return {...W_DEF}; } })();
+function wShare(){ const t=(W.f+W.a+W.g)||1; return {f:W.f/t, a:W.a/t, g:W.g/t}; }
+function wTxt(){ const s=wShare(); return `Finds ${Math.round(s.f*100)} %, air attacks ${Math.round(s.a*100)} %, ground fighting ${Math.round(s.g*100)} %`; }
+const wCustom = () => Object.keys(W_DEF).some(k=>W[k]!==W_DEF[k]);
+function wFill(){
+  const s=wShare();
+  $("#w-f").value=W.f; $("#w-a").value=W.a; $("#w-g").value=W.g;
+  $("#w-fv").textContent=Math.round(s.f*100)+" %"; $("#w-av").textContent=Math.round(s.a*100)+" %"; $("#w-gv").textContent=Math.round(s.g*100)+" %";
+  $("#w-he").value=W.he; $("#w-hv").value=W.hv; $("#w-gd").value=W.gd; $("#w-fl").checked=W.fl;
+  $("#w-note").textContent = wCustom() ? "Your own settings are in use" : "Default settings";
+}
+let wTimer=null;
+function wChanged(){
+  try{ localStorage.setItem("khm-w",JSON.stringify(W)); }catch{}
+  wFill(); clearTimeout(wTimer);
+  wTimer=setTimeout(()=>{ if(S.layers.sens) drawSens(); render(); },250);
+}
+(function wireWeights(){
+  const num=(id,k,min)=>{ $(id).onchange=()=>{ const v=Number($(id).value); W[k]=Number.isFinite(v)&&v>=min?v:W_DEF[k]; wChanged(); }; };
+  [["#w-f","f"],["#w-a","a"],["#w-g","g"]].forEach(([id,k])=>$(id).oninput=()=>{ W[k]=+$(id).value; if(!W.f&&!W.a&&!W.g) W[k]=5; wChanged(); });
+  num("#w-he","he",0); num("#w-hv","hv",1); num("#w-gd","gd",1);
+  $("#w-fl").onchange=()=>{ W.fl=$("#w-fl").checked; wChanged(); };
+  $("#w-reset").onclick=()=>{ Object.assign(W,W_DEF); wChanged(); };
+  wFill();
+})();
+
+/* ---------- export: map image, printable report, table ---------- */
+const expName = area => "kampfmittel-map_" + area.replace(/&amp;/g,"&").replace(/[^A-Za-z0-9äöüÄÖÜß]+/g,"-").replace(/^-|-$/g,"").toLowerCase() + "_" + new Date().toISOString().slice(0,10);
+function saveBlob(blob,name){ const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),4000); }
+async function snap(el,opts={}){
+  const filter = n => !(n.classList && (n.classList.contains("leaflet-control-zoom")||n.classList.contains("mapmode")||n.classList.contains("leaflet-control-attribution")));
+  const o = {pixelRatio:2, cacheBust:false, filter, backgroundColor:css("--bg")||"#fff", ...opts};
+  try{ return await htmlToImage.toCanvas(el,o); }
+  catch{ return await htmlToImage.toCanvas(el,{...o, skipFonts:true}); }
+}
+async function mapCanvas(area){
+  const m = await snap($("#map"));
+  const pr=2, head=58*pr, foot=40*pr, c=document.createElement("canvas");
+  c.width=m.width; c.height=m.height+head+foot;
+  const g=c.getContext("2d"), dark=document.documentElement.dataset.theme==="hud";
+  g.fillStyle=dark?"#0a111a":"#ffffff"; g.fillRect(0,0,c.width,c.height);
+  g.drawImage(m,0,head);
+  g.fillStyle=dark?"#e6f6ff":"#1d232a"; g.font=`600 ${20*pr}px "IBM Plex Sans",Arial,sans-serif`; g.textBaseline="middle";
+  g.fillText(area.replace(/&amp;/g,"&"), 16*pr, 22*pr);
+  g.fillStyle=dark?"#8fb4c4":"#5b6672"; g.font=`${12.5*pr}px "IBM Plex Sans",Arial,sans-serif`;
+  g.fillText(`Period ${S.from} – ${S.to}${S.layers.sens?" · Sensitivity: "+wTxt():""}${$("#sit-on")?.checked&&SIT.days?.[SIT.i]?" · Front line "+fmtDate(SIT.days[SIT.i].date):""}`, 16*pr, 44*pr);
+  g.font=`${11*pr}px "IBM Plex Sans",Arial,sans-serif`;
+  g.fillText("Kampfmittel History Map · Historisch-genetische Rekonstruktion · Locations approximate, not a clearance certificate · Basemap: Natural Earth, deutschlandGeoJSON"+(S.mapStyle==="osm"?", © OpenStreetMap contributors":""), 16*pr, m.height+head+20*pr);
+  return c;
+}
+async function exportPng(area){
+  const b=$("#exp-png"), t=b.textContent; b.textContent="Preparing…"; b.disabled=true;
+  try{ const c=await mapCanvas(area); c.toBlob(bl=>saveBlob(bl,expName(area)+".png"),"image/png"); b.textContent="Downloaded"; }
+  catch(e){ console.warn(e); b.textContent="Export failed"; }
+  setTimeout(()=>{ b.textContent=t; b.disabled=false; },1600);
+}
+function csvCell(v){ v = v==null ? "" : String(v); return /[";\n\r]/.test(v) ? '"'+v.replace(/"/g,'""')+'"' : v; }
+function exportCsv(evs,area){
+  const s=S.sel, cols=["No","Date","Place","Latitude","Longitude","Location","Distance_km","Event type","Target","Force","Unit","Mission","Aircraft","Aircraft type","HE_t","Incendiary_t","Frag_t","Summary","Source","Page"];
+  const rows=evs.map((e,i)=>{ const src=S.sources[e.sourceId];
+    return [`E${i+1}`,e.date,e.place,e.lat?.toFixed(5),e.lon?.toFixed(5),e.locPrecision||"",s.type==="radius"?km(s.lat,s.lon,e.lat,e.lon).toFixed(1).replace(".",","):"",CLASSES[e.missionClass]?.label||e.missionClass,e.targetType,e.force,e.unit,e.mission,e.aircraftCount,e.aircraft,e.tonsHE,e.tonsIC,e.tonsFrag,e.summary,src?src.title:e.sourceId,e.page||e.sourceRef||""]; });
+  const txt="﻿"+[cols,...rows].map(r=>r.map(csvCell).join(";")).join("\r\n");
+  saveBlob(new Blob([txt],{type:"text/csv;charset=utf-8"}),expName(area)+".csv");
+  const b=$("#exp-csv"); b.textContent="Downloaded"; setTimeout(()=>{ const x=$("#exp-csv"); if(x) x.textContent="Table CSV"; },1500);
+}
+async function exportPdf(evs,A,area){
+  const w=window.open("","_blank");
+  if(!w){ $("#exp-pdf").textContent="Allow pop-ups"; return; }
+  w.document.write("<p style='font:15px sans-serif;padding:24px'>Preparing the report…</p>");
+  const plain=area.replace(/&amp;/g,"&");
+  let mapImg="", tlImg="";
+  try{ mapImg=(await mapCanvas(area)).toDataURL("image/jpeg",0.9); }catch(e){ console.warn(e); }
+  let tlW=0; try{ const tl=$("#tl")?.querySelector("svg")||$("#tl"); if(tl&&tl.getBoundingClientRect().width){ tlW=Math.round(tl.getBoundingClientRect().width); tlImg=(await snap(tl)).toDataURL("image/png"); } }catch(e){ console.warn(e); }
+  const srcIds=[...new Set(evs.map(e=>e.sourceId))];
+  const LV={high:"High indication",medium:"Medium indication",low:"Low indication",none:"No recorded events"};
+  const fr = SIT.res?.hits?.length ? `<p>Front-line markings within ${SIT.res.c.r} km appear on ${SIT.res.hits.length} situation maps: first ${fmtDate(SIT.days[SIT.res.hits[0]].date)}, last ${fmtDate(SIT.days[SIT.res.hits.at(-1)].date)}.</p>` : "";
+  const html=`<!doctype html><html lang="en"><head><meta charset="utf-8"><title>${esc(plain)} – Historisch-genetische Rekonstruktion</title><style>
+  @page{size:A4;margin:14mm 12mm}*{box-sizing:border-box}body{font:10.5pt/1.45 "IBM Plex Sans",Arial,sans-serif;color:#1d232a;margin:0;padding:24px;max-width:900px;margin:auto}
+  h1{font-size:19pt;margin:0 0 2px}h2{font-size:12.5pt;margin:20px 0 6px;border-bottom:1.5px solid #c0392b;padding-bottom:3px;break-after:avoid}
+  .meta{color:#5b6672;font-size:9.5pt}.lv{display:inline-block;margin:10px 0 4px;padding:4px 10px;border-left:4px solid ${A.level==="high"?"#c0392b":A.level==="medium"?"#e08e0b":"#3a7d44"};background:#f5f6f7;font-weight:600}
+  img{max-width:100%;display:block;margin:8px 0;border:1px solid #dde1e5}table{width:100%;border-collapse:collapse;font-size:8.6pt;margin-top:4px}th,td{border-bottom:1px solid #e3e6ea;padding:3px 5px;text-align:left;vertical-align:top}th{background:#f1f3f5}tr{break-inside:avoid}
+  .flag{border-left:3px solid #e08e0b;padding:3px 8px;margin:5px 0;break-inside:avoid}.flag.high{border-color:#c0392b}.flag.low{border-color:#3a7d44}
+  .disc{border:1.5px solid #c0392b;padding:8px 10px;margin-top:16px;font-size:9pt;break-inside:avoid}.bar{margin-bottom:14px}.bar button{font:inherit;padding:6px 12px;cursor:pointer}
+  @media print{.bar{display:none}body{padding:0}}</style></head><body>
+  <div class="bar"><button onclick="print()">Print / save as PDF</button></div>
+  <h1>Historisch-genetische Rekonstruktion: ${esc(plain)}</h1>
+  <div class="meta">${S.sel.type==="radius"?`${S.sel.lat.toFixed(4)}° N, ${S.sel.lon.toFixed(4)}° E · `:""}Period ${esc(S.from)} – ${esc(S.to)} · ${evs.length} recorded events from ${srcIds.length} sources · exported ${new Date().toLocaleDateString("de-DE")}</div>
+  <div class="lv">${LV[A.level]||A.level}</div>
+  <div class="meta">${A.attacks} bombing attacks (${A.heavyAttacks} by heavy bombers)${A.tonnageEvents?`, recorded ${fmt(A.tHE)} t high explosive, ${fmt(A.tIC)} t incendiaries, ${fmt(A.tFR)} t fragmentation`:""}${A.ground?` · ${A.ground} ground actions by ${A.units.length} units`:""}. Rated high with ≥ ${W.he} t high explosive, ≥ ${W.hv} heavy-bomber attacks or ground fighting on ≥ ${W.gd} days${W.fl?", or a long-delay fuze flag":""}${wCustom()?" (own settings)":""}.</div>
+  ${mapImg?`<h2>Map</h2><img src="${mapImg}">`:""}
+  ${tlImg?`<h2>Timeline</h2><img src="${tlImg}" style="width:${Math.min(tlW*1.35,860)}px;border:0">`:""}${fr}
+  <h2>What could be found</h2>${A.flags.map(f=>`<div class="flag ${f.lvl}"><b>${esc(f.t)}</b><br>${esc(f.d)}</div>`).join("")||"<p>No specific flags.</p>"}
+  <h2>Ordnance likely used</h2>${A.ord.length?`<table><tr><th>Designation</th><th>Name</th><th>Category</th><th>Likelihood</th><th>Dud hazard</th><th>Attacks</th></tr>${A.ord.map(a=>`<tr><td><b>${esc(a.o.designation)}</b></td><td>${esc(a.o.name)}</td><td>${esc(a.o.category)}</td><td>${esc(a.o.likelihood)}</td><td>${esc(a.o.dudConcern||"")}</td><td>${a.events.length}</td></tr>`).join("")}</table><p class="meta">Inferred from typical loads for the recorded aircraft and target types, not recorded per attack.</p>`:"<p>No air attacks with matching ordnance.</p>"}
+  <h2>Sequence of events</h2><table><tr><th>No</th><th>Date</th><th>Place</th><th>Event</th><th>Source</th></tr>${evs.slice(0,1500).map((e,i)=>{ const src=S.sources[e.sourceId]; return `<tr><td>E${i+1}</td><td style="white-space:nowrap">${esc(e.date)}</td><td>${esc(e.place)}${e.locPrecision==="uncertain"?" (uncertain)":""}</td><td>${esc(e.summary)}</td><td>${esc(src?src.title:e.sourceId)}${e.page?", p. "+esc(e.page):e.sourceRef?", "+esc(e.sourceRef):""}</td></tr>`; }).join("")}</table>${evs.length>1500?`<p class="meta">First 1,500 of ${evs.length} events; use "Table CSV" for all.</p>`:""}
+  <h2>Sources</h2><ul>${srcIds.map(id=>{ const s=S.sources[id]; return `<li>${esc(s?s.title:id)}${s?.author?" – "+esc(s.author):""}</li>`; }).join("")}</ul>
+  <h2>Method</h2><p class="meta">Events are taken from the loaded chronologies, diaries and databases and placed with a gazetteer of German towns and villages; air attacks are drawn as footprints sized by the scale of the attack, ground fighting by unit. Front lines come from 12th Army Group situation maps, georeferenced with an accuracy of about 0.5–3 km. The same raid can appear in several sources, so counts over several sources overstate.${S.layers.sens?` Sensitivity map (Bavaria only): ${wTxt()}, scaled per ~2 km cell.`:""}</p>
+  <div class="disc"><b>Disclaimer – treat with caution.</b> This is a desk-study aid, not a clearance certificate. Locations are approximate and the sources are incomplete; areas without recorded events are not free of ordnance. Always check with the responsible Kampfmittelbeseitigungsdienst and a qualified specialist.</div>
+  <p class="meta">Kampfmittel History Map · ${esc(location.host||"")}</p>
+  <script>window.onload=()=>setTimeout(()=>print(),400)<\/script></body></html>`;
+  w.document.open(); w.document.write(html); w.document.close();
+}
+
 
 /* ---------- map ---------- */
 const map = L.map("map",{preferCanvas:true, minZoom:4, maxZoom:16, zoomSnap:0.5, attributionControl:true}).setView([START.lat, START.lon], 9);
@@ -1524,13 +1644,13 @@ function analyse(evs){
   const gr = evs.filter(e=>e.missionClass==="ground");
   const units = [...new Set(gr.flatMap(e=>String(e.unit||"").split(";").map(u=>u.trim()).filter(Boolean)))];
   const gdays = [...new Set(gr.map(e=>e.date))].sort();
-  if (gr.length) flags.push({lvl:gdays.length>=3||gr.length>=6?"high":"medium",t:"Ground fighting recorded",d:`${gr.length} ground action${gr.length>1?"s":""} on ${gdays.length} day${gdays.length>1?"s":""} (${gdays[0]}${gdays.length>1?" to "+gdays.at(-1):""}) by ${units.slice(0,8).join(", ")}${units.length>8?` and ${units.length-8} more units`:""}. Expect artillery, mortar and tank rounds, mines, grenades, Panzerfaust and infantry ammunition of both sides, plus abandoned or blown-up stocks and field positions.`});
+  if (gr.length) flags.push({lvl:gdays.length>=W.gd||gr.length>=2*W.gd?"high":"medium",t:"Ground fighting recorded",d:`${gr.length} ground action${gr.length>1?"s":""} on ${gdays.length} day${gdays.length>1?"s":""} (${gdays[0]}${gdays.length>1?" to "+gdays.at(-1):""}) by ${units.slice(0,8).join(", ")}${units.length>8?` and ${units.length-8} more units`:""}. Expect artillery, mortar and tank rounds, mines, grenades, Panzerfaust and infantry ammunition of both sides, plus abandoned or blown-up stocks and field positions.`});
   else if (has(["troops"])) flags.push({lvl:"medium",t:"Ground-fighting munitions",d:"Artillery, mortar, infantry and anti-tank munitions of both sides, not covered by air-war sources."});
   if (evs.some(e=>e.missionClass==="unit-move")) flags.push({lvl:"low",t:"Bases and occupation",d:"Units based here after the fighting: check for ammunition stores, post-war dumps and disposal pits."});
   if (evs.some(e=>e.missionClass==="fighter"||e.missionClass==="fighter-bomber")) flags.push({lvl:"low",t:"Aircraft ammunition",d:"Cal .50 rounds from strafing and air combat; crash sites may hold more."});
   if (tIC>0 && !flags.some(f=>f.t==="Incendiary remains")) flags.push({lvl:"medium",t:"Incendiary remains",d:`${Math.round(tIC).toLocaleString("en-GB")} t of incendiaries recorded in this area: magnesium stick incendiaries (some with explosive charges) and phosphorus bombs, mostly near the surface.`});
   if (evs.some(e=>/RAF/.test(e.force||"")&&e.missionClass==="heavy")) flags.push({lvl:"high",t:"RAF long-delay pistols possible",d:"RAF bombs could carry the No. 37 long-delay chemical pistol (delays up to 144 h, anti-withdrawal). Such duds are among the most dangerous finds and must never be moved."});
-  const level2 = !evs.length ? "none" : (tHE>=100 || heavyAttacks>=5 || flags.some(f=>f.lvl==="high")) ? "high" : attacks ? "medium" : "low";
+  const level2 = !evs.length ? "none" : (tHE>=W.he || heavyAttacks>=W.hv || flags.some(f=>f.lvl==="high" && (W.fl || !/long-delay/i.test(f.t)))) ? "high" : attacks ? "medium" : "low";
   const level3 = level2==="low" && gr.length ? "medium" : level2;
   return {attacks, ac, acAssumed, heavyAttacks, byTarget, ord, flags, level:level3, tHE, tIC, tFR, tonnageEvents, ground:gr.length, units, gdays};
 }
@@ -1542,7 +1662,7 @@ function render(){
   let h = `<div class="head"><span class="lbl">Historisch-genetische Rekonstruktion</span><h2>${areaTxt}</h2>
     <div class="meta">${coords}${esc(S.from)} – ${esc(S.to)} · ${evs.length} recorded event${evs.length===1?"":"s"} from ${srcIds.length} source${srcIds.length===1?"":"s"}</div>
     <div class="row"><button class="btn" data-jump="sec1">1 Events</button><button class="btn" data-jump="sec2">2 Ordnance</button><button class="btn" data-jump="sec3">3 Finds</button><button class="btn" data-jump="sec4">4 Sensitivity</button></div>
-    <div class="row"><button class="btn" id="copyrep">Copy report</button>${S.sample?`<select id="nlang" aria-label="Language"><option value="German">Deutsch</option><option value="English">English</option></select><button class="btn primary" id="narrate">Write report text</button>`:""}</div>
+    <div class="row"><button class="btn" id="copyrep">Copy report</button><button class="btn" id="exp-png" title="Download the map as an image">Map PNG</button><button class="btn" id="exp-pdf" title="Map, timeline and tables as a printable report">Report PDF</button><button class="btn" id="exp-csv" title="All events of this area as a table for Excel">Table CSV</button>${S.sample?`<select id="nlang" aria-label="Language"><option value="German">Deutsch</option><option value="English">English</option></select><button class="btn primary" id="narrate">Write report text</button>`:""}</div>
     </div><div id="narrbox" class="narr" style="margin:12px 16px 0" ${S.narrKey===areaTxt&&S.narrHtml?"":"hidden"}>${S.narrKey===areaTxt?S.narrHtml||"":""}</div>
     ${S.sample&&evs.length?`<div class="chat"><span class="lbl">Ask about this area</span><div class="row" style="flex-wrap:wrap;gap:4px">${CHAT_PRESETS.map((q,i)=>`<button class="btn chip" data-cp="${i}">${esc(q[0])}</button>`).join("")}</div><div id="chatlog">${(S.chat[areaTxt]||[]).map(chatHtml).join("")}</div><div class="row"><input type="text" id="chatq" placeholder="e.g. Which units fought here in April 1945?" style="flex:1"><button class="btn primary" id="chatgo">Ask</button></div></div>`:!S.sample&&evs.length?`<div class="chat"><span class="hint">Report text and questions are available to the map owner. ${KHM.isOwner?"":"Sign in as owner to use them."}</span></div>`:""}`;
   // 1 sequence
@@ -1580,7 +1700,7 @@ function render(){
     ${A.tonnageEvents?`<div class="tile"><div class="v">${fmt(A.tHE+A.tIC+A.tFR)} t</div><div class="k">Bombs dropped (recorded)</div></div>`:`<div class="tile"><div class="v">${fmt(A.ac)}${A.acAssumed?"*":""}</div><div class="k">Aircraft attacking</div></div>`}
     <div class="tile"><div class="v">${A.heavyAttacks}</div><div class="k">Heavy-bomber attacks</div></div>
     <div class="tile"><div class="v">${A.ground}</div><div class="k">Ground actions${A.ground?` · ${A.units.length} units`:""}</div></div></div>
-    <span class="hint">${A.tonnageEvents?`${A.tonnageEvents} attacks have recorded tonnage (THOR): ${fmt(A.tHE)} t high explosive, ${fmt(A.tIC)} t incendiaries, ${fmt(A.tFR)} t fragmentation. `:""}The indication rates the area high with 100 t or more of recorded high explosive, 5 or more heavy-bomber attacks, or a high-hazard flag below. The same raid can appear in several sources, so counts over several sources overstate.</span>`;
+    <span class="hint">${A.tonnageEvents?`${A.tonnageEvents} attacks have recorded tonnage (THOR): ${fmt(A.tHE)} t high explosive, ${fmt(A.tIC)} t incendiaries, ${fmt(A.tFR)} t fragmentation. `:""}The indication rates the area high with ${W.he} t or more of recorded high explosive, ${W.hv} or more heavy-bomber attacks, ground fighting on ${W.gd} or more days${W.fl?", or a long-delay fuze flag":""} (change this under Analysis weights). The same raid can appear in several sources, so counts over several sources overstate.</span>`;
     if (A.flags.length) h += A.flags.map(f=>`<div class="find" style="border-left:3px solid var(${f.lvl==="high"?"--crit":f.lvl==="medium"?"--warn":"--ok"})"><b>${esc(f.t)}</b><span>${esc(f.d)}</span></div>`).join("");
     h += `<span class="lbl">By target type</span>` + Object.entries(A.byTarget).sort((a,b)=>b[1]-a[1]).map(([t,n])=>`<div class="find"><b>${esc(t)} <span class="mono hint">× ${n}</span></b><span>${esc(TARGET_FINDS[t]||TARGET_FINDS.other)}</span></div>`).join("");
     h += `<span class="lbl">Next steps</span><ul class="steps">
@@ -1599,6 +1719,9 @@ function render(){
   $("#report").querySelectorAll("tr.main").forEach(tr=>{ const t=()=>{ const d=$(`#report tr[data-d="${tr.dataset.i}"]`); d.hidden=!d.hidden; }; tr.onclick=t; tr.onkeydown=e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();t();}}; });
   $("#report").querySelectorAll("button.src[data-ord]").forEach(b=>b.onclick=()=>openOrdSource(S.ord.find(o=>o._id===b.dataset.ord)));
   $("#copyrep").onclick=()=>copyReport(evs,A,areaTxt);
+  $("#exp-png").onclick=()=>exportPng(areaTxt);
+  $("#exp-pdf").onclick=()=>exportPdf(evs,A,areaTxt);
+  $("#exp-csv").onclick=()=>exportCsv(evs,areaTxt);
   $("#report").querySelectorAll("[data-jump]").forEach(b=>b.onclick=()=>{ const r=$("#report"), t=document.getElementById(b.dataset.jump); r.scrollTop = t.offsetTop - r.querySelector(".head").offsetHeight; });
   const nb=$("#narrate"); if(nb) nb.onclick=()=>narrate(evs,A,areaTxt);
   wireChat(evs,A,areaTxt);
@@ -1666,7 +1789,7 @@ function computeSens(){
   const sF=p95(vals(c=>c.w)), sA=p95(vals(c=>c.tons+2*c.attacks)), sG=p95(vals(c=>c.ground));
   for (const c of cells.values()){
     c.f = Math.min(1,Math.log1p(c.w)/sF); c.a=Math.min(1,Math.log1p(c.tons+2*c.attacks)/sA); c.g=Math.min(1,Math.log1p(c.ground)/sG);
-    c.score = c.inCov ? 0.5*c.f+0.3*c.a+0.2*c.g : 0; // only Bavaria has find reports, so the map covers Bavaria only
+    const ws=wShare(); c.score = c.inCov ? ws.f*c.f+ws.a*c.a+ws.g*c.g : 0; // only Bavaria has find reports, so the map covers Bavaria only
   }
   SENS.cells=cells; return cells;
 }
@@ -1693,7 +1816,7 @@ async function drawSens(){
   const r=sensRadius();
   sensHeat=L.heatLayer(pts,{radius:r,blur:r*0.9,max:1.6,minOpacity:0.08,maxZoom:map.getZoom(),gradient:SENS_GRAD}).addTo(map);
   $("#senslegend").hidden=false;
-  $("#senslegend").innerHTML=`<span class="lbl">Sensitivity</span><div class="sgrad"></div><div class="row" style="justify-content:space-between"><span class="hint">very low</span><span class="hint">medium</span><span class="hint">very high</span></div><span class="hint"><b>Bavaria only</b> – the find reports (${G.total.toLocaleString("de-DE")}) exist only there; the rest of the map is dimmed. Finds 50 %, air attacks 30 %, ground fighting 20 %. Hover for values. Approximate – not precise, treat with caution.</span>`;
+  $("#senslegend").innerHTML=`<span class="lbl">Sensitivity</span><div class="sgrad"></div><div class="row" style="justify-content:space-between"><span class="hint">very low</span><span class="hint">medium</span><span class="hint">very high</span></div><span class="hint"><b>Bavaria only</b> – the find reports (${G.total.toLocaleString("de-DE")}) exist only there; the rest of the map is dimmed. ${wTxt()}. Hover for values. Approximate – not precise, treat with caution.</span>`;
 }
 map.on("zoomend",()=>{ if(S.layers.sens&&sensHeat){ const r=sensRadius(); sensHeat.setOptions({radius:r,blur:r*0.9,maxZoom:map.getZoom()}); } });
 map.on("mousemove",e=>{
@@ -1755,7 +1878,7 @@ function sensSection(){
   if (SENS.pts){ const list=SENS.pts.filter(p=>inSel(p)).sort((a,b)=>(b.rad-a.rad)||String(b.date).localeCompare(a.date)).slice(0,40);
     if (list.length) h+=`<span class="lbl">Largest finds in this area (owner view)</span>`+list.map(p=>`<div class="evrow"><div class="d">${esc(p.date)}</div><div class="t"><span class="p">${esc(p.kal||"?")}${p.zue?` · ${esc(p.zue)}`:""}</span><span class="s">${esc(p.ort)}${p.str?", "+esc(p.str):""}</span><span class="meta-line"><span>${esc(p.typ)}</span><span>· location: ${esc(p.prec||"?")}</span><span class="mono">· ${p.rad} m</span></span></div></div>`).join(""); }
   else if (KHM.isOwner) h+=`<span class="hint">Import the find-report file under Sources to see the individual finds here (only you can see them).</span>`;
-  h+=`<span class="hint">How the score works: each ~2 km cell combines reported finds (weighted by the effect radius of each find, 50 %), air attacks and recorded bomb tonnage (30 %) and ground fighting (20 %), each scaled against all cells; the map covers Bavaria only, the area of the find reports. The current filters (period, event types, sources) are applied to the war events.</span>
+  h+=`<span class="hint">How the score works: each ~2 km cell combines reported finds (weighted by the effect radius of each find, ${Math.round(wShare().f*100)} %), air attacks and recorded bomb tonnage (${Math.round(wShare().a*100)} %) and ground fighting (${Math.round(wShare().g*100)} %), each scaled against all cells; the map covers Bavaria only, the area of the find reports. The current filters (period, event types, sources) are applied to the war events.</span>
   <div class="find" style="border-left:4px solid var(--crit)"><b>Disclaimer – treat with caution</b><span>The points and cells are <b>not precise</b>. They are based on the Fundmunition report (find reports) and the historical sources loaded here; many find locations are only an address, a place name or a map estimate. The sensitivity map is <b>not 100 % reliable</b> and only shows where finds and war events concentrate. Areas without data are not free of ordnance. The effect radius in the report is <b>not an evacuation or exclusion radius</b>. Always check with the responsible Kampfmittelbeseitigungsdienst and a qualified specialist.</span></div>
   <label class="chk"><input type="checkbox" id="sens-on" ${S.layers.sens?"checked":""}>Show the sensitivity map on the main map</label></div>`;
   return h;
