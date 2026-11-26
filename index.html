@@ -1045,6 +1045,12 @@ header.top{flex-wrap:nowrap}header.top .sub{white-space:nowrap;overflow:hidden;t
     <div class="df" style="justify-content:space-between"><button class="btn" id="g-owner">Owner sign-in</button><button class="btn primary" id="g-go">Start</button></div>
   </div>
 </div>
+<div class="modal" id="m-vis" hidden>
+  <div class="dlg" role="dialog" aria-modal="true" aria-labelledby="mv-title" style="max-width:520px">
+    <div class="dh"><h2 id="mv-title">Who used the map</h2><button class="btn x" data-close>Close</button></div>
+    <div class="db" id="m-vis-body"><span class="hint">Loading…</span></div>
+  </div>
+</div>
 <div class="modal" id="m-login" hidden>
   <div class="dlg" role="dialog" aria-modal="true" aria-labelledby="ml-title" style="max-width:380px">
     <div class="dh"><h2 id="ml-title">Owner sign-in</h2><button class="btn x" data-close>Close</button></div>
@@ -1122,7 +1128,7 @@ header.top{flex-wrap:nowrap}header.top .sub{white-space:nowrap;overflow:hidden;t
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script>window.APP_VERSION="20261125-1200";</script>
+<script>window.APP_VERSION="20261126-1400";</script>
 <script src="config.js"></script>
 <script src="backend.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
@@ -2099,13 +2105,14 @@ async function visitorGate(){
   m.querySelectorAll("input[type=text]").forEach(i=>i.onkeydown=e=>{ if(e.key==="Enter") go(); });
 }
 function visitorTag(){ try{ const v=JSON.parse(localStorage.getItem(VKEY)||"null"); return v?.name?(v.company?`${v.name} (${v.company})`:v.name):""; }catch{ return ""; } }
-async function renderVisitors(){
-  const box=$("#visitors"); if(!box) return; if(!KHM.isOwner){ box.innerHTML=""; return; }
-  let list=[]; try{ list=await KHM.listVisitors(); }catch{}
+async function renderVisitors(target){
+  const box=target||$("#visitors"); if(!box) return; if(!KHM.isOwner){ box.innerHTML=""; return; }
+  let list=[], err=""; try{ list=await KHM.listVisitors(); }catch(e){ err=e.message||String(e); }
   const csv=()=>{ const cols=["Date","Name","Company","Role","E-mail","Language"]; const t="\ufeff"+[cols,...list.map(v=>[new Date(v.created_at).toLocaleString("de-DE"),v.name,v.company,v.role,v.email,v.lang])].map(r=>r.map(csvCell).join(";")).join("\r\n"); saveBlob(new Blob([t],{type:"text/csv;charset=utf-8"}),"visitors_"+new Date().toISOString().slice(0,10)+".csv"); };
-  box.innerHTML=`<span class="lbl">Visitors (${list.length})</span>`+(list.length?`<button class="btn" id="v-csv" style="width:max-content">Download list (CSV)</button><div class="vlist">${list.map((v,i)=>`<div class="find"><b>${esc(v.name)}${v.company&&v.company!=="–"?" · "+esc(v.company):""}</b><span class="hint">${new Date(v.created_at).toLocaleString("de-DE")}${v.role?" · "+esc(v.role):""}${v.email?" · "+esc(v.email):""}</span><button class="btn" data-vd="${i}" style="width:max-content">Delete</button></div>`).join("")}</div>`:`<span class="hint">Nobody yet. Visitors enter their name and company before using the map; they appear here (only you can see this list). If this stays empty, run supabase/update-3-visitors.sql in Supabase.</span>`);
-  $("#v-csv")&&($("#v-csv").onclick=csv);
-  box.querySelectorAll("[data-vd]").forEach(b=>b.onclick=()=>confirmDlg("Delete this visitor entry?",async()=>{ await KHM.deleteVisitor(list[+b.dataset.vd].id); renderVisitors(); }));
+  box.innerHTML=`<span class="lbl">Visitors (${list.length})</span>`+(list.length?`<button class="btn" id="v-csv" style="width:max-content">Download list (CSV)</button><div class="vlist">${list.map((v,i)=>`<div class="find"><b>${esc(v.name)}${v.company&&v.company!=="–"?" · "+esc(v.company):""}</b><span class="hint">${new Date(v.created_at).toLocaleString("de-DE")}${v.role?" · "+esc(v.role):""}${v.email?" · "+esc(v.email):""}</span><button class="btn" data-vd="${i}" style="width:max-content">Delete</button></div>`).join("")}</div>`:err?`<span class="hint" style="color:var(--warn)">The visitor list could not be loaded: ${esc(err)}</span>`:`<span class="hint">Nobody yet. Visitors enter their name and company before using the map; they appear here (only you can see this list). If this stays empty, run supabase/update-3-visitors.sql in Supabase.</span>`);
+  const vb=$("#vis-btn"); if(vb&&!err) vb.textContent=`Visitors (${list.length})`;
+  box.querySelector("#v-csv")&&(box.querySelector("#v-csv").onclick=csv);
+  box.querySelectorAll("[data-vd]").forEach(b=>b.onclick=()=>confirmDlg("Delete this visitor entry?",async()=>{ await KHM.deleteVisitor(list[+b.dataset.vd].id); renderVisitors(target); }));
 }
 async function importBundle(file){
   const st=$("#modebox"); st.insertAdjacentHTML("beforeend",`<span class="hint" id="bmsg">Reading the bundle…</span>`);
@@ -2126,9 +2133,10 @@ async function importBundle(file){
 function renderAuth(){
   const box=$("#authbox");
   if (!KHM.configured) box.innerHTML=`<span class="pill" style="color:var(--warn)">Local only · set up config.js</span>`;
-  else if (KHM.isOwner) box.innerHTML=`<span class="pill" style="color:var(--ok)">Owner · ${esc(KHM.email)}</span><button class="btn" id="logout">Sign out</button>`;
+  else if (KHM.isOwner) box.innerHTML=`<span class="pill" style="color:var(--ok)">Owner · ${esc(KHM.email)}</span><button class="btn" id="vis-btn">Visitors</button><button class="btn" id="logout">Sign out</button>`;
   else box.innerHTML=`<span class="pill">Visitor</span><button class="btn" id="login">Owner sign-in</button>`;
   $("#logout")&&($("#logout").onclick=()=>KHM.signOut());
+  $("#vis-btn")&&($("#vis-btn").onclick=()=>{ openModal("#m-vis"); renderVisitors($("#m-vis-body")); });
   $("#login")&&($("#login").onclick=()=>{ openModal("#m-login"); $("#li-email").focus(); });
   const mb=$("#modebox");
   mb.innerHTML = KHM.isOwner

@@ -240,7 +240,7 @@
       const { error } = await sb.from("visitors").insert(row);
       if (error) throw error; return true;
     },
-    async listVisitors() { if (!state.isOwner) return []; const { data } = await sb.from("visitors").select("*").order("created_at", { ascending: false }).limit(1000); return data || []; },
+    async listVisitors() { if (!state.isOwner) return []; const { data, error } = await sb.from("visitors").select("*").order("created_at", { ascending: false }).limit(1000); if (error) throw new Error(error.message); return data || []; },
     async deleteVisitor(id) { if (!state.isOwner) return; await sb.from("visitors").delete().eq("id", id); },
     localCount: () => COLS.reduce((n, c) => n + state.local[c].size, 0),
     ready: () => state.ready
